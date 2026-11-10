@@ -50,7 +50,7 @@ This tree is a source copy of [VoiceStudio](https://github.com/debpalash/VoiceSt
 
 The commands below were verified on Linux x86_64 with no NVIDIA GPU: Bun 1.4.2, uv, CPU PyTorch 2.8.0, and Python 3.11 installed by uv. The web UI and the FastAPI backend both start. Speech synthesis itself waits on a model download (below).
 
-A headless Ubuntu/Debian VPS install (systemd, API key, optional HTTPS) is in [DEPLOY.md](DEPLOY.md). The public one-liners need no token:
+A headless Ubuntu/Debian VPS install (systemd, API key, optional HTTPS) is in [DEPLOY.md](DEPLOY.md). Step-by-step manuals: [Install Guide](docs/INSTALL_GUIDE.md), [Admin Manual](docs/ADMIN_MANUAL.md), and [User Manual](docs/USER_MANUAL.md). The public one-liners need no token:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/vibhvesh/voicestudio/main/scripts/install.sh | sudo bash
@@ -245,6 +245,7 @@ Upgrading from 0.5.3 or older (the Tauri app)? [Install the new app separately](
 
 | Need | Start here |
 |---|---|
+| VPS install, admin, and everyday use | [Install Guide](docs/INSTALL_GUIDE.md) · [Admin Manual](docs/ADMIN_MANUAL.md) · [User Manual](docs/USER_MANUAL.md) · [DEPLOY.md](DEPLOY.md) |
 | Setup help | [Troubleshooting](docs/install/troubleshooting.md) · [Model downloads](docs/downloading-models.md) |
 | Guides | [Multi-speaker dubbing](docs/dubbing/multi-speaker-guide.md) · [Expressive speech](docs/expressive-speech.md) · [Exporting dubs](docs/dubbing/export.md) |
 | Models & quality | [Engine guides](docs/engines/README.md) · [whisper.cpp ASR](docs/engines/whisper-cpp.md) · [Benchmarks](docs/benchmarks.md) |
