@@ -310,7 +310,7 @@
     "entries_count_other": "{{count}} entries"
   },
   "app": {
-    "name": "VoiceStudio",
+    "name": "CanberraAI Voice",
     "tagline": "Open source voice cloning and workflow engine. Build local.",
     "coming_soon": "Coming soon",
     "version": "v{{version}}",
@@ -322,7 +322,7 @@
     "toast_model_unloaded": " · model unloaded",
     "toast_flush_failed": "Flush failed: {{message}}",
     "not_found_title": "Page not found",
-    "not_found_body": "This address doesn't match any page in VoiceStudio."
+    "not_found_body": "This address doesn't match any page in this app."
   },
   "nav": {
     "home": "Home",

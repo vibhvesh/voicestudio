@@ -329,8 +329,8 @@ def _enqueue(parsed: dict) -> tuple[jobs.Job, int]:
 
 def public_meta() -> dict:
     return {
-        "name": "VoiceStudio Speak",
-        "title": "VoiceStudio – Text to Speech",
+        "name": "CanberraAI Voice",
+        "title": "CanberraAI Voice",
         "max_chars": config.MAX_TEXT_CHARS,
         "min_wpm": config.MIN_WPM,
         "max_wpm": config.MAX_WPM,

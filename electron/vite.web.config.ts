@@ -23,7 +23,7 @@ export default defineConfig({
     {
       name: 'app-identity',
       transformIndexHtml(html) {
-        return html.replaceAll('__APP_PRODUCT_NAME__', PRODUCT_NAME);
+        return html.replaceAll('__APP_PRODUCT_NAME__', 'CanberraAI Voice');
       },
     },
     {

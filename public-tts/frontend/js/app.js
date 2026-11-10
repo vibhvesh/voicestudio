@@ -114,7 +114,7 @@
       languageEl.appendChild(group);
     }
     addGroup("Common languages", featured);
-    addGroup("All OmniVoice languages", rest);
+    addGroup("All languages", rest);
     if (Array.from(languageEl.options).some((opt) => opt.value === current)) {
       languageEl.value = current;
     } else if (languageEl.options.length) {
@@ -214,7 +214,7 @@
       player.load();
       const ext = (result.contentType || "").indexOf("mpeg") !== -1 ? "mp3" : "wav";
       download.href = objectUrl;
-      download.download = "voicestudio-" + result.language + "-" + Math.round(result.targetDuration) + "s." + ext;
+      download.download = "speech-" + result.language + "-" + Math.round(result.targetDuration) + "s." + ext;
       const actual = player.duration;
       resultMeta.textContent =
         result.wordCount + " words at " + result.wpm + " WPM" +

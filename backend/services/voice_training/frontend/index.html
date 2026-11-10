@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Build an optimized reference profile from clips of one speaker.">
+  <title>Voice Training</title>
+  <link rel="stylesheet" href="training.css">
+</head>
+<body>
+  <div class="page">
+    <header>
+      <p class="eyebrow">CanberraAI Voice · Admin</p>
+      <h1>Voice Training</h1>
+      <p class="lede">The speech engine is zero-shot (OmniVoice does not fine-tune on your clips). “Training” here means building an optimized reference profile from several recordings of one speaker, then saving it as a named voice.</p>
+    </header>
+
+    <main class="card">
+      <form id="train-form" novalidate>
+        <div class="field">
+          <label for="name">Voice name</label>
+          <input id="name" name="name" type="text" required maxlength="80" placeholder="For example, Studio anchor">
+        </div>
+        <div class="field">
+          <label for="language">Language</label>
+          <input id="language" name="language" type="text" required maxlength="16" value="hi" placeholder="hi, en, …">
+        </div>
+        <div class="field">
+          <label for="clips">Clips of one speaker</label>
+          <input id="clips" name="clips" type="file" accept="audio/wav,audio/mpeg,audio/mp4,.wav,.mp3,.m4a,.flac,.ogg" multiple required>
+          <p class="hint">Upload several wav, mp3, or m4a recordings. Short clips are combined into a 6–15 second reference.</p>
+          <div id="clip-list" class="clip-list"></div>
+        </div>
+        <label class="consent" for="consent">
+          <input id="consent" name="consent" type="checkbox" value="true" required>
+          <span>I have this speaker's permission to clone their voice</span>
+        </label>
+        <div class="actions">
+          <button type="submit" id="train" class="primary" disabled>Train voice</button>
+        </div>
+      </form>
+
+      <section class="status" id="status" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <div>
+          <p id="status-title">Starting…</p>
+          <p class="hint" id="status-detail"></p>
+          <progress id="status-bar" max="100" value="0"></progress>
+        </div>
+      </section>
+      <p class="error" id="error" hidden></p>
+      <section class="result" id="result" hidden>
+        <h2>Saved</h2>
+        <p id="result-detail"></p>
+      </section>
+    </main>
+
+    <section class="card" id="library">
+      <h2>Trained voices</h2>
+      <p class="hint">These also appear on the public Speak page automatically.</p>
+      <ul id="voice-list" class="voice-list"></ul>
+    </section>
+
+    <footer>
+      <p>Powered by CanberraAI Voice Agent · Hosted in Vadodara, IN</p>
+      <p><a href="/">Back to admin</a></p>
+    </footer>
+  </div>
+  <script src="training.js"></script>
+</body>
+</html>

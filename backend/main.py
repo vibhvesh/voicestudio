@@ -801,6 +801,7 @@ def _phase_a_build_inner() -> None:
         media_tools as media_tools_router,  # Audio tools: ffmpeg/ffprobe/yt-dlp
         auth as auth_router,
         voice_convert,  # Studio Convert: speech-to-speech via ASR → TTS
+        voice_training,
     )
     from api.routers import mcp_bindings as _mcp_bindings_router  # noqa: E402
     from api.routers import telephony_twilio as _telephony_twilio_router  # noqa: E402
@@ -821,6 +822,7 @@ def _phase_a_build_inner() -> None:
         media_tools_router, auth_router, _mcp_bindings_router,
         _telephony_twilio_router, _calls_router, _cloud_sync_router,
         _AdminPanelModule,
+        voice_training,
     ])
     # Download-acceleration state, once, for triage-from-logs (FDL-03).
     try:
@@ -1739,7 +1741,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-_SHELL_PATHS = {"/", "/index.html", "/favicon.ico", "/early-error-capture.js", "/health"}
+_SHELL_PATHS = {"/", "/index.html", "/favicon.ico", "/early-error-capture.js", "/branding.js", "/health"}
 
 
 def _is_public_path(path: str) -> bool:
@@ -1750,6 +1752,8 @@ def _is_public_path(path: str) -> bool:
         path in _SHELL_PATHS
         or path.startswith("/assets/")
         or path.startswith("/favicon")
+        or path == "/voice-training"
+        or path.startswith("/voice-training/")
         or path == "/api/auth/session"
     )
 
