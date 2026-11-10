@@ -5,11 +5,10 @@
 #   sudo bash scripts/install.sh --port 8787
 #   sudo bash scripts/install.sh --domain voices.example.com --email you@example.com
 #
-# Piped (only works when this repository is publicly readable):
-#   curl -fsSL https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main/scripts/install.sh | sudo bash
+# Public one-liner (no token):
+#   curl -fsSL https://raw.githubusercontent.com/vibhvesh/voicestudio/main/scripts/install.sh | sudo bash
 #
-# A private repository returns a login page to curl, so the pipe never sees
-# this script. Clone with git credentials, then run the file. See DEPLOY.md.
+# A private mirror can still pass --git-token or VOICESTUDIO_GIT_TOKEN. See DEPLOY.md.
 set -euo pipefail
 
 usage() {
@@ -49,7 +48,7 @@ if [ ! -f "${BASH_SOURCE[0]:-}" ]; then
     apt-get install -y -qq git ca-certificates curl
   fi
   prefix=/opt/voicestudio
-  repo="${VOICESTUDIO_REPO:-https://origin.cursor.com/git/vibhvesh-chandel/tmp-975794ea12dd953e.git}"
+  repo="${VOICESTUDIO_REPO:-https://github.com/vibhvesh/voicestudio.git}"
   ref="${VOICESTUDIO_REF:-main}"
   prev=
   for arg in "$@"; do
@@ -66,16 +65,9 @@ if [ ! -f "${BASH_SOURCE[0]:-}" ]; then
   if ! git clone --branch "$ref" "$repo" "$prefix"; then
     cat >&2 <<EOF
 voicestudio: git clone failed for ${repo}.
-This repository is private. curl cannot download the installer (the raw URL
-redirects to a login page), and git clone needs a credential.
-
-Simplest fix: make the repository public. Then the curl | sudo bash command
-in DEPLOY.md works, and clone does not need a token.
-
-Until then:
-  git clone https://x-access-token:\$TOKEN@origin.cursor.com/git/vibhvesh-chandel/tmp-975794ea12dd953e.git
-  cd <checkout>
-  sudo bash scripts/install.sh
+The public source is https://github.com/vibhvesh/voicestudio.git and does not
+need a token. If you pointed --repo at a private mirror, set
+VOICESTUDIO_GIT_TOKEN or pass --git-token and run this again.
 EOF
     exit 1
   fi

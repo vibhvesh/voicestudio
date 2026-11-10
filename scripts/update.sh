@@ -5,7 +5,7 @@
 #   sudo bash /opt/voicestudio/scripts/update.sh
 #
 # Piped form, after a public clone already lives in /opt/voicestudio:
-#   curl -fsSL https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main/scripts/update.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/vibhvesh/voicestudio/main/scripts/update.sh | sudo bash
 set -euo pipefail
 
 if [ ! -f "${BASH_SOURCE[0]:-}" ]; then
@@ -75,13 +75,18 @@ if [ -n "$previous" ] && [ "$previous" != "$TORCH" ]; then
 fi
 env_set OMNIVOICE_TORCH_VARIANT "$TORCH"
 
-log "Updating $PREFIX to origin/${REF}"
+# Older installs recorded the private Origin URL. Public updates come from GitHub.
+case "$REPO" in
+  *origin.cursor.com*|*tmp-975794ea12dd953e*|"") REPO=$VOICESTUDIO_DEFAULT_REPO ;;
+esac
+env_set VOICESTUDIO_REPO "$REPO"
+log "Updating $PREFIX from ${REPO} (${REF})"
 token=${VOICESTUDIO_GIT_TOKEN:-}
-if [ -n "$token" ] && [ -n "$REPO" ]; then
-  git -C "$PREFIX" -c "safe.directory=$PREFIX" remote set-url origin "$(repo_url_with_token "$REPO" "$token")"
-fi
+fetch_url=$(repo_url_with_token "$REPO" "$token")
+git -C "$PREFIX" -c "safe.directory=$PREFIX" remote set-url origin "$fetch_url"
 if ! git -C "$PREFIX" -c "safe.directory=$PREFIX" fetch origin "$REF"; then
-  die "git fetch failed. A private repository needs a credential root can use (VOICESTUDIO_GIT_TOKEN or a root git credential). Models and config were not touched."
+  git -C "$PREFIX" -c "safe.directory=$PREFIX" remote set-url origin "$REPO" || true
+  die "git fetch failed for ${REPO}. The public GitHub repo does not need a token. Set VOICESTUDIO_GIT_TOKEN only for a private mirror. Models and config were not touched."
 fi
 # The app tree is replaced by origin. Keep the environment the installer built
 # (.venv, node_modules, the web build) and never touch the data directory,

@@ -8,6 +8,7 @@ interface UpdateStatus {
   version: string;
   sha: string;
   latest_sha: string;
+  repo?: string;
   ref: string;
   update_available: boolean;
   remote_error: string;
@@ -32,7 +33,7 @@ export function UpdatesSection() {
     <>
       <AdminHeader
         title="Updates"
-        detail="Compares this checkout with origin and runs scripts/update.sh. Models and the API key stay where they are."
+        detail="Compares this install with https://github.com/vibhvesh/voicestudio and runs scripts/update.sh. The public repo does not need a token. Models and the API key stay where they are."
       />
       <div className="grid gap-3 sm:grid-cols-3">
         <Card>
@@ -46,7 +47,9 @@ export function UpdatesSection() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Latest on {data?.ref || 'main'}</CardTitle>
+            <CardTitle className="text-sm">
+              Latest on {data?.repo ? data.repo.replace(/\.git$/, '') : 'github.com/vibhvesh/voicestudio'} ({data?.ref || 'main'})
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-sm">
             <p className="font-medium">

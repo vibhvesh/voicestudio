@@ -50,7 +50,15 @@ This tree is a source copy of [VoiceStudio](https://github.com/debpalash/VoiceSt
 
 The commands below were verified on Linux x86_64 with no NVIDIA GPU: Bun 1.4.2, uv, CPU PyTorch 2.8.0, and Python 3.11 installed by uv. The web UI and the FastAPI backend both start. Speech synthesis itself waits on a model download (below).
 
-A headless Ubuntu/Debian VPS install (systemd, API key, optional HTTPS) is in [DEPLOY.md](DEPLOY.md). The Electron desktop one-liner remains `scripts/desktop/install.sh`.
+A headless Ubuntu/Debian VPS install (systemd, API key, optional HTTPS) is in [DEPLOY.md](DEPLOY.md). The public one-liners need no token:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/vibhvesh/voicestudio/main/scripts/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/vibhvesh/voicestudio/main/scripts/update.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/vibhvesh/voicestudio/main/scripts/uninstall.sh | sudo bash
+```
+
+Source for those commands is [github.com/vibhvesh/voicestudio](https://github.com/vibhvesh/voicestudio). The Electron desktop one-liner remains `scripts/desktop/install.sh`.
 
 ### Prerequisites
 

@@ -5,6 +5,8 @@
 #   sudo bash /opt/voicestudio/scripts/uninstall.sh
 #   sudo bash /opt/voicestudio/scripts/uninstall.sh --purge
 #   sudo bash /opt/voicestudio/scripts/uninstall.sh --keep-data
+#
+#   curl -fsSL https://raw.githubusercontent.com/vibhvesh/voicestudio/main/scripts/uninstall.sh | sudo bash
 set -euo pipefail
 
 if [ ! -f "${BASH_SOURCE[0]:-}" ]; then

@@ -23,51 +23,25 @@ The Electron desktop installer is `scripts/desktop/install.sh`. It is not this V
 
 ## One-liners
 
-Raw base (this repository, branch `main`):
-
-```text
-https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main/
-```
-
-| Script | URL |
-|---|---|
-| Install | `https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main/scripts/install.sh` |
-| Update | `https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main/scripts/update.sh` |
-| Uninstall | `https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main/scripts/uninstall.sh` |
-
-**These URLs require authentication.** The repository is private. An unauthenticated `curl` does not receive the script: `https://cursor.com/codebase/.../raw/main/scripts/install.sh` answers **307** to a Cursor login page, and a git access token sent as `Authorization: Bearer` is not accepted there either. `git clone` of `https://origin.cursor.com/git/vibhvesh-chandel/tmp-975794ea12dd953e.git` also asks for a username when no credential is configured.
-
-`curl | bash` therefore cannot install this copy until the repository is public.
-
-**Simplest fix:** make the repository public. After that, the same raw URLs should return the shell files, `git clone` of the origin URL needs no token, and the commands below work as written.
-
-Until then, clone with a git credential and run the file (this is what actually works):
+Public source, no token: [github.com/vibhvesh/voicestudio](https://github.com/vibhvesh/voicestudio). This tree stays under [AGPL-3.0](LICENSE) and keeps attribution to [debpalash/VoiceStudio](https://github.com/debpalash/VoiceStudio).
 
 ```bash
-git clone https://x-access-token:$TOKEN@origin.cursor.com/git/vibhvesh-chandel/tmp-975794ea12dd953e.git
-cd tmp-975794ea12dd953e
-sudo bash scripts/install.sh
-```
+curl -fsSL https://raw.githubusercontent.com/vibhvesh/voicestudio/main/scripts/install.sh | sudo bash
 
-Do not commit the token. On later updates, root's git must be able to fetch. Either make the repo public, or export `VOICESTUDIO_GIT_TOKEN` for `sudo -E bash scripts/update.sh`.
+curl -fsSL https://raw.githubusercontent.com/vibhvesh/voicestudio/main/scripts/update.sh | sudo bash
 
-Once the raw URLs serve the files without a login, the one-liners are:
-
-```bash
-curl -fsSL https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main/scripts/install.sh | sudo bash
-
-curl -fsSL https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main/scripts/update.sh | sudo bash
-
-curl -fsSL https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main/scripts/uninstall.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/vibhvesh/voicestudio/main/scripts/uninstall.sh | sudo bash
 ```
 
 Pass flags after `--`:
 
 ```bash
-curl -fsSL https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main/scripts/install.sh | sudo bash -s -- --port 8787
-curl -fsSL https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main/scripts/install.sh | sudo bash -s -- --domain voices.example.com --email you@example.com
-curl -fsSL https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main/scripts/uninstall.sh | sudo bash -s -- --purge
+curl -fsSL https://raw.githubusercontent.com/vibhvesh/voicestudio/main/scripts/install.sh | sudo bash -s -- --port 8787
+curl -fsSL https://raw.githubusercontent.com/vibhvesh/voicestudio/main/scripts/install.sh | sudo bash -s -- --domain voices.example.com --email you@example.com
+curl -fsSL https://raw.githubusercontent.com/vibhvesh/voicestudio/main/scripts/uninstall.sh | sudo bash -s -- --purge
 ```
+
+A private mirror is optional. Pass `--repo https://example.com/you/voicestudio.git` and `--git-token` (or `VOICESTUDIO_GIT_TOKEN`). The public GitHub URL does not use either.
 
 ## What the installer does
 
@@ -94,7 +68,7 @@ curl -fsSL https://nodejs.org/dist/v22.23.4/node-v22.23.4-linux-x64.tar.xz | sud
 curl -fsSL https://bun.sh/install | sudo env BUN_INSTALL=/usr/local bash -s "bun-v1.4.2"
 curl -LsSf https://astral.sh/uv/install.sh | sudo env UV_INSTALL_DIR=/usr/local/bin sh
 
-sudo git clone https://origin.cursor.com/git/vibhvesh-chandel/tmp-975794ea12dd953e.git /opt/voicestudio
+sudo git clone https://github.com/vibhvesh/voicestudio.git /opt/voicestudio
 cd /opt/voicestudio
 
 # cuda when nvidia-smi works; otherwise cpu
@@ -163,7 +137,7 @@ curl -fsS http://127.0.0.1:3900/health
 
 Open `http://<vps>:8787`. Paste the API key when the page asks. The first session is a setup wizard. Generating speech downloads `k2-fsa/OmniVoice` (about 2.4 GB) after you confirm.
 
-The admin panel is at `http://<vps>:8787/#/admin`. Loopback does not need the key. Any other address does, and the installer sets `OMNIVOICE_SERVER_MODE=1` so that key is accepted for admin routes. Version checks and one-click update run `git` as the service; a private origin still needs a credential root can use, or the Updates page reports that it could not read origin.
+The admin panel is at `http://<vps>:8787/#/admin`. Loopback does not need the key. Any other address does, and the installer sets `OMNIVOICE_SERVER_MODE=1` so that key is accepted for admin routes. Version checks and one-click update read `https://github.com/vibhvesh/voicestudio.git`. That public URL does not need a token.
 
 Check a proxy header bug with a non-loopback address. `/engines` must be **401** without the key and **200** with `Authorization: Bearer <key>`. A client that sends `X-Forwarded-For: 127.0.0.1` must still be 401. The proxy strips that header.
 
@@ -217,7 +191,7 @@ sudo bash /opt/voicestudio/scripts/uninstall.sh --keep-data  # never delete mode
 sudo bash /opt/voicestudio/scripts/uninstall.sh --purge      # delete models, env, and the service user
 ```
 
-Update runs `git fetch` as root. On a private repository that fails until root has a credential. The data directory is not inside the git tree, so a reset of `/opt/voicestudio` does not delete models.
+Update runs `git fetch` as root against the public GitHub repo, so no token is required. The data directory is not inside the git tree, so a reset of `/opt/voicestudio` does not delete models.
 
 ## Logs
 

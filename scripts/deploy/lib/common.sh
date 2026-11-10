@@ -6,9 +6,9 @@
 : "${VOICESTUDIO_DEFAULT_ETC:=/etc/voicestudio}"
 : "${VOICESTUDIO_DEFAULT_WEB_PORT:=8787}"
 : "${VOICESTUDIO_DEFAULT_API_PORT:=3900}"
-: "${VOICESTUDIO_DEFAULT_REPO:=https://origin.cursor.com/git/vibhvesh-chandel/tmp-975794ea12dd953e.git}"
+: "${VOICESTUDIO_DEFAULT_REPO:=https://github.com/vibhvesh/voicestudio.git}"
 : "${VOICESTUDIO_DEFAULT_REF:=main}"
-VOICESTUDIO_RAW_BASE="https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main"
+VOICESTUDIO_RAW_BASE="https://raw.githubusercontent.com/vibhvesh/voicestudio/main"
 VOICESTUDIO_SERVICE_USER="voicestudio"
 VOICESTUDIO_ENV_FILE="${VOICESTUDIO_DEFAULT_ETC}/voicestudio.env"
 

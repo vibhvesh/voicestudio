@@ -44,13 +44,25 @@ def _log_path() -> Path:
     return Path("/var/log/voicestudio/update.log")
 
 
+PUBLIC_REPO = "https://github.com/vibhvesh/voicestudio.git"
+
+
+def _source_repo() -> str:
+    """Public GitHub by default. A private mirror is used only when configured."""
+    configured = os.environ.get("VOICESTUDIO_REPO", "").strip()
+    if not configured or "origin.cursor.com" in configured or "tmp-975794ea12dd953e" in configured:
+        return PUBLIC_REPO
+    return configured
+
+
 @router.get("/updates")
 def updates_status():
     prefix = _prefix()
     code, head = _git("rev-parse", "HEAD")
     current_full = head.splitlines()[-1].strip() if code == 0 and head else ""
     ref = os.environ.get("VOICESTUDIO_REF", "main").strip() or "main"
-    remote_code, remote = _git("ls-remote", "origin", f"refs/heads/{ref}")
+    source = _source_repo()
+    remote_code, remote = _git("ls-remote", source, f"refs/heads/{ref}")
     latest_full = ""
     if remote_code == 0 and remote:
         latest_full = remote.split()[0].strip()
@@ -70,6 +82,7 @@ def updates_status():
         "commit": build_commit() or current_full[:12],
         "sha": current_full[:12],
         "latest_sha": latest_full[:12],
+        "repo": source,
         "ref": ref,
         "update_available": bool(current_full and latest_full and current_full != latest_full),
         "remote_error": "" if remote_code == 0 else remote[-500:],
