@@ -32,12 +32,31 @@ MAX_REFERENCE_BYTES = int(os.environ.get("VOICESTUDIO_PUBLIC_MAX_REF_BYTES", str
 UPSTREAM_TIMEOUT_S = int(os.environ.get("VOICESTUDIO_PUBLIC_UPSTREAM_TIMEOUT", "1200"))
 NUM_STEP = int(os.environ.get("VOICESTUDIO_PUBLIC_NUM_STEP", "16"))
 
+# SOP baseline: English at speed=1.0 was about 194 WPM on this host.
+BASELINE_WPM = float(os.environ.get("VOICESTUDIO_PUBLIC_BASELINE_WPM", "194"))
+JOB_TTL_S = int(os.environ.get("VOICESTUDIO_PUBLIC_JOB_TTL", "1800"))
+MAX_QUEUE = int(os.environ.get("VOICESTUDIO_PUBLIC_MAX_QUEUE", "10"))
+
+# Optional URL alias, e.g. /speak/api/... → /api/...  Root /api/* always works.
+# bowlinger.net/voice/ is served by the PA bot and proxied to root /api/*.
+def _normalize_prefix(raw: str) -> str:
+    value = (raw or "").strip()
+    if not value or value == "/":
+        return ""
+    if not value.startswith("/"):
+        value = "/" + value
+    return value.rstrip("/")
+
+PUBLIC_PREFIX = _normalize_prefix(os.environ.get("VOICESTUDIO_PUBLIC_PREFIX", "/speak"))
+
 DEFAULT_CORS_ORIGINS = (
     "https://bowlinger.net",
     "https://www.bowlinger.net",
     "http://bowlinger.net",
     "http://www.bowlinger.net",
     "http://130.250.191.136:8788",
+    "https://tts.bowlinger.net",
+    "http://tts.bowlinger.net",
 )
 
 def _split_origins(raw: str) -> tuple[str, ...]:

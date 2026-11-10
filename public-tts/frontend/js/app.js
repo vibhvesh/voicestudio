@@ -32,6 +32,8 @@
     min_duration_s: 1,
     max_duration_s: 45,
     cpu_realtime_factor: 11,
+    baseline_wpm: 194,
+    poll_interval_ms: 2500,
     voices: [],
     default_voice: "narrator"
   };
@@ -66,8 +68,8 @@
     charCount.textContent = length + " / " + max;
     charCount.style.color = length >= max ? "#9b2c2c" : "";
     const wpm = Number(wpmEl.value) || meta.default_wpm;
-    const est = api.durationFromWpm(textEl.value, wpm, meta.min_duration_s, meta.max_duration_s);
-    const wait = est.duration * (meta.cpu_realtime_factor || 11);
+    const est = api.planFromWpm(textEl.value, wpm, meta.baseline_wpm || 194, meta.min_duration_s, meta.max_duration_s);
+    const wait = est.generateDuration * (meta.cpu_realtime_factor || 11);
     if (!est.words) {
       durationHint.textContent = "At " + wpm + " words per minute this will be about 0 seconds of audio.";
       return;
@@ -131,17 +133,30 @@
     updateCounts();
   }
 
+  let expectedWaitS = 0;
+  let lastJobStatus = null;
+
   function startTimer(expectedS) {
     startedAt = Date.now();
+    expectedWaitS = expectedS;
+    lastJobStatus = null;
     statusEl.hidden = false;
     resultEl.hidden = true;
     statusTitle.textContent = "Generating…";
     const tick = () => {
       const elapsed = Date.now() - startedAt;
-      statusDetail.textContent =
-        "Elapsed " + formatElapsed(elapsed) +
-        ". Typical wait is about " + formatSeconds(expectedS) +
-        " on this CPU server (about 11× the audio length).";
+      let detail = "Elapsed " + formatElapsed(elapsed) +
+        ". Typical wait is about " + formatSeconds(expectedWaitS) +
+        " on this CPU server (about 11× the natural audio length).";
+      if (lastJobStatus) {
+        if (lastJobStatus.status === "queued") {
+          statusTitle.textContent = "Queued…";
+          detail = "Position " + (lastJobStatus.position || 1) + " in the queue. " + detail;
+        } else if (lastJobStatus.status === "running") {
+          statusTitle.textContent = "Generating…";
+        }
+      }
+      statusDetail.textContent = detail;
     };
     tick();
     clearInterval(timerId);
@@ -184,9 +199,9 @@
       return;
     }
     const wpm = Number(wpmEl.value);
-    const est = api.durationFromWpm(text, wpm, meta.min_duration_s, meta.max_duration_s);
+    const est = api.planFromWpm(text, wpm, meta.baseline_wpm || 194, meta.min_duration_s, meta.max_duration_s);
     generateBtn.disabled = true;
-    startTimer(est.duration * (meta.cpu_realtime_factor || 11));
+    startTimer(est.generateDuration * (meta.cpu_realtime_factor || 11));
     try {
       const result = await api.generate({
         text,
@@ -194,6 +209,9 @@
         wpm,
         voice: voiceEl.value,
         reference: referenceEl.files && referenceEl.files[0]
+      }, {
+        pollIntervalMs: meta.poll_interval_ms || 2500,
+        onStatus: function (job) { lastJobStatus = job; }
       });
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       objectUrl = URL.createObjectURL(result.blob);
@@ -209,6 +227,7 @@
         (result.capped ? " (capped)" : "") +
         " · " + result.language +
         " · " + result.voice +
+        (result.method ? " · " + result.method : "") +
         " · generated in " + formatElapsed(Date.now() - startedAt) + ".";
       resultEl.hidden = false;
       try { await player.play(); } catch (err) { /* autoplay may be blocked */ }

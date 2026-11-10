@@ -4,28 +4,29 @@ A simple public page for the VoiceStudio (OmniVoice) install: type text, pick a 
 
 The browser talks only to this proxy. The VoiceStudio API key is read from `/etc/voicestudio/voicestudio.env` on the server and is never sent to the client.
 
-## What the page offers
+## Endpoints
 
-- Text box (500 characters) and a `.txt` file upload that fills it
-- Language picker from the OmniVoice catalog (646 languages)
-- Words-per-minute slider (80–220, default 150), mapped to the API `duration` parameter: `duration_s = words / wpm * 60` (capped at 45 seconds)
-- Voice picker using OmniVoice design tags that the model actually accepts (gender, age, pitch, whisper)
-- Optional reference-voice upload for cloning
-- Progress state with an elapsed timer (this CPU host is about 11× real time)
-- Audio player and download
+Root `/api/*` is the primary surface (https://bowlinger.net/voice/api/* is proxied here). An optional `/speak` alias serves the same routes.
 
-Emotion, laughter, and “sad tone” are not separate OmniVoice controls. Write them into the text.
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/` or `/speak/` | The page |
+| GET | `/api/health` | Liveness and queue size |
+| GET | `/api/meta` | Limits, voices, baseline WPM |
+| GET | `/api/languages` | OmniVoice language catalog |
+| POST | `/api/jobs` | Start a narration; returns `{job_id, position}` at once (HTTP 202) |
+| GET | `/api/jobs/{id}` | Status: `queued`, `running`, `done`, or `error`, plus position and elapsed time |
+| GET | `/api/jobs/{id}/audio` | The WAV when `done` |
+| POST | `/api/generate` | Compatibility: waits and returns the audio in one request |
 
-## Layout
+The frontend always builds URLs as `apiBase + "/api/..."`, including the audio fetch.
 
-```
-public-tts/
-  backend/          Python proxy modules
-  frontend/         HTML, CSS, and JavaScript
-  data/languages.tsv
-  systemd/voicestudio-public.service
-  tests/
-```
+## Words per minute
+
+A baseline of about **194 WPM** was measured on this host at `speed=1.0`. SOP tests found that `duration` and `speed < 1` do not reliably slow the words.
+
+- Faster than 194 WPM: native `speed = target / 194`
+- Slower than 194 WPM: generate at `speed=1.0`, then ffmpeg `atempo = target / 194`
 
 ## Run
 
@@ -35,13 +36,8 @@ python3 backend/app.py
 
 Listens on `0.0.0.0:8788` by default and forwards generation to `http://127.0.0.1:3900`.
 
-CORS is allowed for `https://bowlinger.net` (and www / http variants) plus the VPS origin. Set `VOICESTUDIO_PUBLIC_CORS_ORIGINS` to change that list.
+Abuse protection: 500-character cap, 5 narrations per IP per hour, 20 per hour globally, a single worker, and finished jobs expire after 30 minutes.
 
-Abuse protection: 500-character cap, 5 narrations per IP per hour, 20 per hour globally, and a single in-flight job.
+## Hosting on https://bowlinger.net/voice/
 
-## Hosting on bowlinger.net
-
-This process does not configure DNS or TLS for bowlinger.net. Ship the files in `frontend/` (see the bundle README) and either:
-
-1. Reverse-proxy `https://bowlinger.net/voice/` (or a subdomain) to `http://130.250.191.136:8788` — recommended, keeps HTTPS and avoids mixed content; or
-2. Serve the static files on bowlinger.net and point `js/config.js` `apiBase` at the VPS. This only works if the page is also HTTP, or if the proxy itself is reached over HTTPS.
+The PA bot serves the static bundle at `/voice/` with `js/config.js` `apiBase: "/voice"`, and proxies `/voice/api/*` to `http://130.250.191.136:8788/api/*`. Leave root `/api/*` on the VPS unchanged. Generation can take several minutes, so the proxy read timeout must be long enough for status polls; the job itself is not tied to a single HTTP request.

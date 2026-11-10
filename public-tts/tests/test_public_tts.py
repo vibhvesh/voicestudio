@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from backend import config, cors, languages, queue, rate_limit, wpm
-from backend import http_util
+from backend import http_util, jobs, paths, tempo
 
 
 class WpmTests(unittest.TestCase):
@@ -111,6 +111,104 @@ class StaticPathTests(unittest.TestCase):
         self.assertEqual(http_util.safe_static(root, "/").name, "index.html")
         self.assertEqual(http_util.safe_static(root, "/css/styles.css").name, "styles.css")
         self.assertIsNone(http_util.safe_static(root, "/../../etc/passwd"))
+
+
+
+
+class RatePlanTests(unittest.TestCase):
+    def test_slower_uses_atempo(self):
+        plan = wpm.plan_rate("one two three four five six seven eight nine ten", 100, baseline_wpm=194)
+        self.assertEqual(plan.method, "atempo")
+        self.assertEqual(plan.api_speed, 1.0)
+        self.assertAlmostEqual(plan.atempo, 100 / 194, places=5)
+        self.assertAlmostEqual(plan.expected_duration_s, 6.0, places=3)
+        self.assertIn("atempo=", plan.atempo_filter)
+
+    def test_180_also_slower_than_baseline(self):
+        plan = wpm.plan_rate("one two three four five six seven eight nine ten", 180, baseline_wpm=194)
+        self.assertEqual(plan.method, "atempo")
+        self.assertAlmostEqual(plan.atempo, 180 / 194, places=5)
+        self.assertAlmostEqual(plan.expected_duration_s, 10 / 180 * 60, places=3)
+
+    def test_faster_uses_native_speed(self):
+        plan = wpm.plan_rate("one two three four five six seven eight nine ten", 220, baseline_wpm=194)
+        self.assertEqual(plan.method, "native_speed")
+        self.assertAlmostEqual(plan.api_speed, 220 / 194, places=5)
+        self.assertIsNone(plan.atempo)
+
+    def test_atempo_chain_below_half(self):
+        # 80 / 194 ≈ 0.412, needs two stages
+        parts = wpm.atempo_chain(80 / 194)
+        self.assertGreaterEqual(len(parts), 2)
+        product = 1.0
+        for part in parts:
+            self.assertGreaterEqual(part, 0.5)
+            self.assertLessEqual(part, 2.0)
+            product *= part
+        self.assertAlmostEqual(product, 80 / 194, places=5)
+
+
+class PathPrefixTests(unittest.TestCase):
+    def test_root_api_unchanged(self):
+        self.assertEqual(paths.logical_path("/api/jobs"), "/api/jobs")
+        self.assertEqual(paths.logical_path("/api/jobs/abc/audio"), "/api/jobs/abc/audio")
+        self.assertEqual(paths.logical_path("/"), "/")
+
+    def test_speak_alias(self):
+        self.assertEqual(config.PUBLIC_PREFIX, "/speak")
+        self.assertEqual(paths.logical_path("/speak"), "/")
+        self.assertEqual(paths.logical_path("/speak/"), "/")
+        self.assertEqual(paths.logical_path("/speak/api/jobs"), "/api/jobs")
+        self.assertEqual(paths.logical_path("/speak/api/jobs/xyz/audio"), "/api/jobs/xyz/audio")
+        self.assertEqual(paths.logical_path("/speak/css/styles.css"), "/css/styles.css")
+
+
+class JobStoreTests(unittest.TestCase):
+    def test_queue_position_and_expiry(self):
+        store = jobs.JobStore()
+        plan = wpm.plan_rate("hello world", 150, baseline_wpm=194)
+        first = jobs.Job(job_id="job_one_aaa", text="hello world", language="en",
+                         voice_id="narrator", wpm_value=150, plan=plan)
+        second = jobs.Job(job_id="job_two_bbb", text="hello world", language="en",
+                          voice_id="narrator", wpm_value=150, plan=plan)
+        _, pos1 = store.submit(first)
+        _, pos2 = store.submit(second)
+        self.assertEqual(pos1, 1)
+        self.assertEqual(pos2, 2)
+        self.assertEqual(store.get("job_two_bbb").status, "queued")
+        first.status = "done"
+        first.finished_at = 0  # long ago
+        first.audio = b"RIFF"
+        store.expire()
+        self.assertIsNone(store.get("job_one_aaa"))
+        self.assertIsNotNone(store.get("job_two_bbb"))
+
+    def test_public_audio_path_is_root_api(self):
+        plan = wpm.plan_rate("hello world", 150, baseline_wpm=194)
+        job = jobs.Job(job_id="abc123XYZ", text="hello world", language="en",
+                       voice_id="narrator", wpm_value=150, plan=plan)
+        job.status = "done"
+        job.audio = b"x"
+        data = job.public_dict()
+        self.assertEqual(data["audio_path"], "/api/jobs/abc123XYZ/audio")
+
+
+class TempoTests(unittest.TestCase):
+    def test_stretch_doubles_length(self):
+        import io, math, struct, subprocess, wave
+        buf = io.BytesIO()
+        rate = 8000
+        n = rate  # 1 second
+        with wave.open(buf, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(rate)
+            frames = b"".join(struct.pack("<h", int(8000 * math.sin(2 * math.pi * 440 * i / rate))) for i in range(n))
+            wf.writeframes(frames)
+        stretched = tempo.stretch(buf.getvalue(), 0.5)
+        with wave.open(io.BytesIO(stretched), "rb") as wf:
+            duration = wf.getnframes() / float(wf.getframerate())
+        self.assertAlmostEqual(duration, 2.0, delta=0.05)
 
 
 if __name__ == "__main__":

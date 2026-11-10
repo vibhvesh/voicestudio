@@ -1,14 +1,18 @@
 /* VoiceStudio Speak frontend configuration.
  *
- * apiBase is the origin of the public proxy (no trailing slash).
- * Leave it empty when this page is served by the VoiceStudio proxy itself,
- * or when https://bowlinger.net reverse-proxies /voice (or the whole host)
- * to http://130.250.191.136:8788. Same-origin is the recommended setup
- * because an HTTPS page cannot call a plain HTTP API (mixed content).
+ * apiBase is prepended to every API path. The frontend always builds URLs as:
+ *   apiBase + "/api/..."
+ * including the audio fetch, e.g. apiBase + "/api/jobs/" + id + "/audio".
  *
- * For a temporary HTTP-only test you may set:
- *   apiBase: "http://130.250.191.136:8788"
+ * Values:
+ *   "" or "auto"  — when this page is served from the proxy root
+ *                   (http://130.250.191.136:8788/), "auto" becomes "".
+ *                   If the page is under /speak/, "auto" becomes "/speak".
+ *   "/voice"      — for https://bowlinger.net/voice/ (static files there,
+ *                   /voice/api/* proxied to the VPS /api/*).
+ *
+ * Do not put the VoiceStudio API key in this file.
  */
 window.VOICESTUDIO_CONFIG = window.VOICESTUDIO_CONFIG || {
-  apiBase: ""
+  apiBase: "auto"
 };

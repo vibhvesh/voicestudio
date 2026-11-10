@@ -35,18 +35,22 @@ def generate(
     *,
     text: str,
     language: str,
-    duration_s: float,
     voice_id: str,
+    speed: float = 1.0,
     reference_bytes: Optional[bytes] = None,
     reference_name: Optional[str] = None,
 ) -> tuple[bytes, str, dict]:
-    """Call the loopback API and return (audio_bytes, content_type, meta)."""
+    """Call the loopback API and return (audio_bytes, content_type, meta).
+
+    Do not pass ``duration`` — it is not a reliable WPM control. For rates
+    below the baseline, generate at speed 1.0 and stretch afterwards.
+    """
     voice = config.VOICES.get(voice_id) or config.VOICES[config.DEFAULT_VOICE]
     if reference_bytes:
         return _generate_with_reference(
             text=text,
             language=language,
-            duration_s=duration_s,
+            speed=speed,
             voice=voice,
             reference_bytes=reference_bytes,
             reference_name=reference_name or "reference.wav",
@@ -54,12 +58,12 @@ def generate(
     return _generate_json(
         text=text,
         language=language,
-        duration_s=duration_s,
+        speed=speed,
         voice=voice,
     )
 
 
-def _generate_json(text: str, language: str, duration_s: float, voice: dict) -> tuple[bytes, str, dict]:
+def _generate_json(text: str, language: str, speed: float, voice: dict) -> tuple[bytes, str, dict]:
     payload = {
         "model": "omnivoice",
         "input": text,
@@ -68,7 +72,7 @@ def _generate_json(text: str, language: str, duration_s: float, voice: dict) -> 
         "instruct": voice["instruct"],
         "seed": voice["seed"],
         "response_format": "wav",
-        "duration": duration_s,
+        "speed": speed,
         "num_step": config.NUM_STEP,
     }
     body = json.dumps(payload).encode("utf-8")
@@ -78,13 +82,13 @@ def _generate_json(text: str, language: str, duration_s: float, voice: dict) -> 
         method="POST",
         headers={**_headers(), "Content-Type": "application/json"},
     )
-    return _send(req, voice, language, duration_s)
+    return _send(req, voice, language, speed)
 
 
 def _generate_with_reference(
     text: str,
     language: str,
-    duration_s: float,
+    speed: float,
     voice: dict,
     reference_bytes: bytes,
     reference_name: str,
@@ -95,7 +99,7 @@ def _generate_with_reference(
     fields = {
         "text": text,
         "language": language,
-        "duration": str(duration_s),
+        "speed": str(speed),
         "num_step": str(config.NUM_STEP),
         "engine": "omnivoice",
         "effect_preset": "broadcast",
@@ -129,10 +133,10 @@ def _generate_with_reference(
             "Content-Type": f"multipart/form-data; boundary={boundary}",
         },
     )
-    return _send(req, voice, language, duration_s, cloned=True)
+    return _send(req, voice, language, speed, cloned=True)
 
 
-def _send(req: urllib.request.Request, voice: dict, language: str, duration_s: float, cloned: bool = False) -> tuple[bytes, str, dict]:
+def _send(req: urllib.request.Request, voice: dict, language: str, speed: float, cloned: bool = False) -> tuple[bytes, str, dict]:
     try:
         with urllib.request.urlopen(req, timeout=config.UPSTREAM_TIMEOUT_S) as resp:
             data = resp.read()
@@ -158,7 +162,7 @@ def _send(req: urllib.request.Request, voice: dict, language: str, duration_s: f
         "audio_id": audio_id,
         "voice": voice["id"],
         "language": language,
-        "duration": duration_s,
+        "speed": speed,
         "cloned": cloned,
         "bytes": len(data),
     }
