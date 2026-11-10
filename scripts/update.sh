@@ -83,7 +83,11 @@ fi
 if ! git -C "$PREFIX" -c "safe.directory=$PREFIX" fetch origin "$REF"; then
   die "git fetch failed. A private repository needs a credential root can use (VOICESTUDIO_GIT_TOKEN or a root git credential). Models and config were not touched."
 fi
-git -C "$PREFIX" -c "safe.directory=$PREFIX" checkout -B "$REF" "origin/$REF"
+# The app tree is replaced by origin. Keep the environment the installer built
+# (.venv, node_modules, the web build) and never touch the data directory,
+# which lives outside this checkout.
+git -C "$PREFIX" -c "safe.directory=$PREFIX" clean -fd \
+  -e .venv -e node_modules -e frontend/dist
 git -C "$PREFIX" -c "safe.directory=$PREFIX" reset --hard "origin/$REF"
 if [ -n "$REPO" ]; then
   git -C "$PREFIX" -c "safe.directory=$PREFIX" remote set-url origin "$REPO"

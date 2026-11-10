@@ -130,12 +130,29 @@ wait_for_health() {
   die "API did not become healthy on 127.0.0.1:${port}. See /var/log/voicestudio/api.log or journalctl -u voicestudio-api"
 }
 
+wait_for_tcp() {
+  local port=$1 i
+  for i in $(seq 1 50); do
+    if bash -c "echo >/dev/tcp/127.0.0.1/${port}" 2>/dev/null; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  die "Nothing is listening on 127.0.0.1:${port}. See /var/log/voicestudio/web.log"
+}
+
 start_services() {
   local no_systemd=$1 api_port=$2
   if [ "$no_systemd" != 1 ] && systemd_running; then
     systemctl restart voicestudio-api.service
     wait_for_health "$api_port"
     systemctl restart voicestudio-web.service
+    local mode web_port
+    mode=$(env_get VOICESTUDIO_WEB_MODE)
+    web_port=$(env_get VOICESTUDIO_WEB_PORT)
+    if [ "$mode" = proxy ] || [ -z "$mode" ]; then
+      wait_for_tcp "$web_port"
+    fi
     return
   fi
   if [ "$no_systemd" != 1 ]; then
@@ -169,6 +186,11 @@ start_services() {
         </dev/null &
       ;;
   esac
+  local web_port
+  web_port=$(env_get VOICESTUDIO_WEB_PORT)
+  if [ "$mode" = proxy ] || [ -z "$mode" ]; then
+    wait_for_tcp "$web_port"
+  fi
 }
 
 stop_background() {
