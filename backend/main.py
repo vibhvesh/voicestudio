@@ -765,6 +765,7 @@ def _phase_a_build_inner() -> None:
         system,
         profiles,
         profile_images,
+        saved_voices,
         exports,
         generation,
         dub_core,
@@ -811,7 +812,7 @@ def _phase_a_build_inner() -> None:
         router = _admin_panel_router
 
     _router_modules.extend([
-        system, profiles, profile_images, exports, generation, voice_convert, dub_core, dub_generate,
+        system, profiles, profile_images, saved_voices, exports, generation, voice_convert, dub_core, dub_generate,
         dub_export, dub_translate, projects, glossary, engines, tools,
         stories, setup, gallery, archetypes, describe_voice, community,
         batch, watermark, events, capture, capture_ws, speech_platform, dictation,

@@ -1848,6 +1848,9 @@ async def generate_speech(
     emo_alpha: Optional[float] = Form(None, ge=0.0, le=1.0),
     emo_vector: Optional[str] = Form(None),
     profile_id: Optional[str] = Form(None),
+    # Saved-voice slug or name from /voices (e.g. amit-agnihotri).
+    # An uploaded ref_audio still wins when both are sent.
+    voice: Optional[str] = Form(None),
     seed: Optional[int] = Form(None),
     effect_preset: str = Form("broadcast"),
     wav_bits: Literal["16", "24", "32"] = Form("16"),
@@ -1887,6 +1890,17 @@ async def generate_speech(
     # (utils/duration.py) so the estimate and the synthesis see the same text.
     import unicodedata
     text = unicodedata.normalize("NFC", text)
+
+    saved_voice = None
+    voice_token = (voice or "").strip() or None
+    if voice_token:
+        from services.saved_voices.storage import lookup_voice
+        saved_voice = lookup_voice(voice_token)
+        if saved_voice is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No saved voice named {voice_token!r}.",
+            )
 
     # ── Engine resolution (issue #312) ──────────────────────────────────────
     # The request runs on the engine selected in Settings (POST /engines/select,
@@ -1957,7 +1971,9 @@ async def generate_speech(
     # fail inside the engine, after a model load, and a reference on an
     # engine that can't clone would be silently dropped. Say so before any work.
     _refused = _conditioning_refusal(
-        backend_cls, profile_id=profile_id, has_ref_audio=ref_audio is not None,
+        backend_cls,
+        profile_id=profile_id or (saved_voice.profile_id if saved_voice else None),
+        has_ref_audio=ref_audio is not None or saved_voice is not None,
         instruct=instruct, seed=seed, design_recipe=design_recipe,
     )
     if _refused:
@@ -2128,6 +2144,18 @@ async def generate_speech(
     # below instead of being silently dropped at the engine boundary (#2281).
     request_ref_text = strip_script_markup(ref_text)
 
+    if saved_voice is not None:
+        if used_seed is None:
+            used_seed = saved_voice.seed
+        if not (language or "").strip() and saved_voice.language:
+            language = saved_voice.language
+            language_from_profile = True
+        if not (instruct or "").strip() and saved_voice.instruct:
+            instruct = saved_voice.instruct
+        if resolved_profile_id is None:
+            resolved_profile_id = saved_voice.profile_id
+            history_mode = history_mode or "clone"
+
     if profile_id:
         with db_conn() as conn:
             row = conn.execute("SELECT * FROM voice_profiles WHERE id=?", (profile_id,)).fetchone()
@@ -2162,6 +2190,11 @@ async def generate_speech(
                 ref_lease = _TempReferenceLease(ref_audio_path)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+    elif saved_voice is not None:
+        # No uploaded override: use the processed clip and transcript on disk.
+        ref_audio_path = str(saved_voice.ref_wav)
+        if not ref_text:
+            ref_text = saved_voice.ref_text
     # Script markup is never spoken, so it is never part of a transcript (#3062).
     ref_text = strip_script_markup(ref_text) or None
 

@@ -16,10 +16,10 @@ from urllib.parse import urlparse
 if __name__ == "__main__" and __package__ is None:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from backend import config, cors, languages, rate_limit, wpm
-    from backend import http_util, jobs, paths, proxy
+    from backend import http_util, jobs, paths, proxy, saved
 else:
     from . import config, cors, languages, rate_limit, wpm
-    from . import http_util, jobs, paths, proxy
+    from . import http_util, jobs, paths, proxy, saved
 
 LOG = logging.getLogger("voicestudio-speak")
 
@@ -95,6 +95,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/meta":
             self._json(200, public_meta())
+            return
+        if path == "/api/voices":
+            self._json(200, {"voices": saved.public_list()})
             return
         if path == "/api/languages":
             self._json(200, {"languages": languages.all_languages()})
@@ -247,7 +250,7 @@ class Handler(BaseHTTPRequestHandler):
         if not languages.is_supported(language):
             self._json(400, {"error": f"Language {language!r} is not in the OmniVoice catalog.", "code": "bad_language"})
             return None
-        if voice_id not in config.VOICES:
+        if voice_id not in config.VOICES and not saved.is_known(voice_id):
             self._json(400, {"error": "Unknown voice.", "code": "bad_voice"})
             return None
 

@@ -14,7 +14,7 @@ import urllib.request
 from pathlib import Path
 from typing import Optional
 
-from . import config
+from . import config, saved
 
 
 class UpstreamError(Exception):
@@ -45,8 +45,8 @@ def generate(
     Do not pass ``duration`` — it is not a reliable WPM control. For rates
     below the baseline, generate at speed 1.0 and stretch afterwards.
     """
-    voice = config.VOICES.get(voice_id) or config.VOICES[config.DEFAULT_VOICE]
     if reference_bytes:
+        voice = _voice_payload(voice_id)
         return _generate_with_reference(
             text=text,
             language=language,
@@ -55,12 +55,70 @@ def generate(
             reference_bytes=reference_bytes,
             reference_name=reference_name or "reference.wav",
         )
+    record = saved.get(voice_id)
+    if record:
+        return _generate_saved(
+            text=text,
+            language=language,
+            speed=speed,
+            voice=record,
+        )
+    voice = config.VOICES.get(voice_id) or config.VOICES[config.DEFAULT_VOICE]
     return _generate_json(
         text=text,
         language=language,
         speed=speed,
         voice=voice,
     )
+
+
+def _voice_payload(voice_id: str) -> dict:
+    record = saved.get(voice_id)
+    if record:
+        return {
+            "id": record["slug"],
+            "instruct": "",
+            "seed": record.get("seed") if record.get("seed") is not None else 42,
+        }
+    return config.VOICES.get(voice_id) or config.VOICES[config.DEFAULT_VOICE]
+
+
+def _generate_saved(text: str, language: str, speed: float, voice: dict) -> tuple[bytes, str, dict]:
+    """Ask upstream /generate to load the saved voice by slug."""
+    boundary = "----VoiceStudioSpeakSaved9c2e"
+    fields = {
+        "text": text,
+        "language": language,
+        "speed": str(speed),
+        "num_step": str(config.NUM_STEP),
+        "engine": "omnivoice",
+        "effect_preset": "broadcast",
+        "voice": voice["slug"],
+    }
+    if voice.get("seed") is not None:
+        fields["seed"] = str(voice["seed"])
+    chunks: list[bytes] = []
+    for name, value in fields.items():
+        chunks.append(
+            (
+                f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="{name}"\r\n\r\n'
+                f"{value}\r\n"
+            ).encode("utf-8")
+        )
+    chunks.append(f"--{boundary}--\r\n".encode("ascii"))
+    body = b"".join(chunks)
+    req = urllib.request.Request(
+        config.API_URL + "/generate",
+        data=body,
+        method="POST",
+        headers={
+            **_headers(),
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+        },
+    )
+    payload = {"id": voice["slug"], "instruct": "", "seed": voice.get("seed")}
+    return _send(req, payload, language, speed, cloned=True)
 
 
 def _generate_json(text: str, language: str, speed: float, voice: dict) -> tuple[bytes, str, dict]:
