@@ -1,0 +1,132 @@
+"""Every operator-facing environment option the admin panel edits."""
+
+from __future__ import annotations
+
+SETTINGS: list[dict] = [
+    {
+        "key": "OMNIVOICE_PORT",
+        "label": "API port",
+        "group": "Network",
+        "kind": "port",
+        "help": "Loopback port for the API. The public web port proxies to it.",
+        "restart": True,
+    },
+    {
+        "key": "VOICESTUDIO_WEB_HOST",
+        "label": "Web bind address",
+        "group": "Network",
+        "kind": "text",
+        "help": "Address the public proxy listens on. 0.0.0.0 is every interface.",
+        "restart": True,
+    },
+    {
+        "key": "VOICESTUDIO_WEB_PORT",
+        "label": "Web port",
+        "group": "Network",
+        "kind": "port",
+        "help": "Port you open in the firewall. Leave the API port closed.",
+        "restart": True,
+    },
+    {
+        "key": "OMNIVOICE_TORCH_VARIANT",
+        "label": "PyTorch build",
+        "group": "Compute",
+        "kind": "enum",
+        "options": ["cpu", "cuda", "rocm", "auto"],
+        "help": "Wheel variant. Changing it needs a dependency reinstall, then a restart.",
+        "restart": True,
+    },
+    {
+        "key": "OMNIVOICE_DEVICE",
+        "label": "Inference device",
+        "group": "Compute",
+        "kind": "enum",
+        "options": ["", "cpu", "cuda", "mps"],
+        "help": "Empty follows the detected device. cpu forces CPU inference.",
+        "restart": True,
+    },
+    {
+        "key": "OMNIVOICE_DATA_DIR",
+        "label": "Data directory",
+        "group": "Storage",
+        "kind": "path",
+        "help": "Database, projects, and generated audio.",
+        "restart": True,
+    },
+    {
+        "key": "HF_HOME",
+        "label": "Hugging Face home",
+        "group": "Storage",
+        "kind": "path",
+        "help": "Root of the model cache.",
+        "restart": True,
+    },
+    {
+        "key": "HF_HUB_CACHE",
+        "label": "Hugging Face hub cache",
+        "group": "Storage",
+        "kind": "path",
+        "help": "Where downloaded model weights are stored.",
+        "restart": True,
+    },
+    {
+        "key": "OMNIVOICE_FRONTEND_DIST",
+        "label": "Web UI build",
+        "group": "Storage",
+        "kind": "path",
+        "help": "Directory that contains the built index.html.",
+        "restart": True,
+    },
+    {
+        "key": "HF_TOKEN",
+        "label": "Hugging Face token",
+        "group": "Secrets",
+        "kind": "secret",
+        "help": "Optional. Higher download limits, and required for gated models such as pyannote.",
+        "restart": False,
+    },
+    {
+        "key": "OPENAI_API_KEY",
+        "label": "OpenAI API key",
+        "group": "Translation",
+        "kind": "secret",
+        "help": "Optional. Used when translation talks to OpenAI.",
+        "restart": False,
+    },
+    {
+        "key": "TRANSLATE_BASE_URL",
+        "label": "Translation base URL",
+        "group": "Translation",
+        "kind": "url",
+        "help": "OpenAI-compatible endpoint. Ollama is typically http://127.0.0.1:11434/v1.",
+        "restart": False,
+    },
+    {
+        "key": "TRANSLATE_API_KEY",
+        "label": "Translation API key",
+        "group": "Translation",
+        "kind": "secret",
+        "help": "Optional when the endpoint does not require a key.",
+        "restart": False,
+    },
+    {
+        "key": "TRANSLATE_MODEL",
+        "label": "Translation model",
+        "group": "Translation",
+        "kind": "text",
+        "help": "Model name sent to the translation endpoint.",
+        "restart": False,
+    },
+    {
+        "key": "OMNIVOICE_ASR_BACKEND",
+        "label": "Whisper / ASR backend",
+        "group": "Speech",
+        "kind": "text",
+        "help": "Engine id, for example faster-whisper or whisperx. Empty uses the default.",
+        "restart": True,
+    },
+]
+
+SECRET_KEYS = {item["key"] for item in SETTINGS if item["kind"] == "secret"}
+RESTART_KEYS = {item["key"] for item in SETTINGS if item["restart"]}
+BY_KEY = {item["key"]: item for item in SETTINGS}

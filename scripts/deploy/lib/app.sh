@@ -84,6 +84,6 @@ chown_tree() {
   # The env file stays root-owned and group-readable.
   if [ -f "$VOICESTUDIO_ENV_FILE" ]; then
     chown "root:${VOICESTUDIO_SERVICE_USER}" "$VOICESTUDIO_ENV_FILE"
-    chmod 0640 "$VOICESTUDIO_ENV_FILE"
+    chmod 0660 "$VOICESTUDIO_ENV_FILE"
   fi
 }

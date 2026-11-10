@@ -53,6 +53,7 @@ const SettingsPage = lazyRouteComponent(
   'SettingsPage',
 );
 const ProPage = lazyRouteComponent(() => import('@/features/pro/pro-page'), 'ProPage');
+const AdminPage = lazyRouteComponent(() => import('@/features/admin/admin-page'), 'AdminPage');
 
 export const rootRoute = createRootRoute({ component: AppShell });
 
@@ -274,7 +275,19 @@ export const diagnosticsRoute = createRoute({
   path: '/settings/diagnostics',
   component: SettingsPage,
 });
+export const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin',
+  component: AdminPage,
+});
+export const adminSectionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/$section',
+  component: AdminPage,
+});
 export const routeTree = rootRoute.addChildren([
+  adminRoute,
+  adminSectionRoute,
   diagnosticsRoute,
   openApiRoute,
   updatesRoute,

@@ -163,6 +163,8 @@ curl -fsS http://127.0.0.1:3900/health
 
 Open `http://<vps>:8787`. Paste the API key when the page asks. The first session is a setup wizard. Generating speech downloads `k2-fsa/OmniVoice` (about 2.4 GB) after you confirm.
 
+The admin panel is at `http://<vps>:8787/#/admin`. Loopback does not need the key. Any other address does, and the installer sets `OMNIVOICE_SERVER_MODE=1` so that key is accepted for admin routes. Version checks and one-click update run `git` as the service; a private origin still needs a credential root can use, or the Updates page reports that it could not read origin.
+
 Check a proxy header bug with a non-loopback address. `/engines` must be **401** without the key and **200** with `Authorization: Bearer <key>`. A client that sends `X-Forwarded-For: 127.0.0.1` must still be 401. The proxy strips that header.
 
 ```bash

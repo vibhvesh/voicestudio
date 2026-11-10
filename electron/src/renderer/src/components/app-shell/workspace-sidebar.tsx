@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { PanelLeftIcon, PanelLeftOpenIcon, SettingsIcon } from 'lucide-react';
+import { PanelLeftIcon, PanelLeftOpenIcon, SettingsIcon, ShieldIcon } from 'lucide-react';
 import { brandIcon, brandArtwork } from '@/lib/brand';
 import { appVersion, isMac } from '@/components/bridge';
 import { cn } from '@/lib/utils';
@@ -92,6 +92,17 @@ export function WorkspaceSidebar() {
               'flex shrink-0 flex-col items-center gap-1 border-t border-border/50 py-2',
             )}
           >
+            <Link
+              to="/admin"
+              aria-label="Admin"
+              title="Admin"
+              className={cn(
+                buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
+                'workspace-nav-item',
+              )}
+            >
+              <ShieldIcon className="workspace-nav-icon" />
+            </Link>
             <Link
               to="/settings"
               aria-label={t('nav.settings')}
@@ -194,6 +205,16 @@ export function WorkspaceSidebar() {
             />
             {!mac && (
               <div className="flex items-center justify-between gap-2 border-t border-border/50 px-3 py-2">
+                <Link
+                  to="/admin"
+                  className={cn(
+                    buttonVariants({ variant: 'ghost', size: 'sm' }),
+                    'workspace-nav-item',
+                  )}
+                >
+                  <ShieldIcon className="workspace-nav-icon" />
+                  Admin
+                </Link>
                 <Link
                   to="/settings"
                   className={cn(

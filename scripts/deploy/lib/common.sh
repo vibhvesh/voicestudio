@@ -93,7 +93,7 @@ env_set() {
   printf '%s=%s\n' "$key" "$value" >>"$tmp"
   if getent group "$VOICESTUDIO_SERVICE_USER" >/dev/null 2>&1; then
     chown "root:${VOICESTUDIO_SERVICE_USER}" "$tmp"
-    chmod 0640 "$tmp"
+    chmod 0660 "$tmp"
   else
     chmod 0600 "$tmp"
   fi

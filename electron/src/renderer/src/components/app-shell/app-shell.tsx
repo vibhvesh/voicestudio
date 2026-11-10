@@ -16,7 +16,7 @@ export function AppShell() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const shellOnly = pathname.startsWith('/settings') || pathname === '/pro';
+  const shellOnly = pathname.startsWith('/settings') || pathname.startsWith('/admin') || pathname === '/pro';
   // Settings pads its own header (account-corner-safe); every other page, /pro
   // included, gets the shared clearance so its search button never sits under
   // the account corner and notifications bell.

@@ -102,6 +102,20 @@ WantedBy=multi-user.target
 EOF
 }
 
+install_service_control() {
+  local prefix=$1
+  local dest=/usr/local/lib/voicestudio
+  install -d -m 0755 "$dest"
+  install -m 0755 "$prefix/scripts/deploy/service-control.sh" "$dest/service-control.sh"
+  cat >/etc/sudoers.d/voicestudio <<'EOF'
+voicestudio ALL=(root) NOPASSWD: /usr/local/lib/voicestudio/service-control.sh status, /usr/local/lib/voicestudio/service-control.sh restart, /usr/local/lib/voicestudio/service-control.sh stop, /usr/local/lib/voicestudio/service-control.sh update
+EOF
+  chmod 0440 /etc/sudoers.d/voicestudio
+  if command -v visudo >/dev/null 2>&1; then
+    visudo -cf /etc/sudoers.d/voicestudio
+  fi
+}
+
 install_units() {
   local prefix=$1 mode=$2
   local uv_bin

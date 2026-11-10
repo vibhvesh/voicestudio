@@ -200,6 +200,7 @@ if [ -z "$(env_get OMNIVOICE_API_KEY)" ]; then
   key_new=1
   env_set OMNIVOICE_API_KEY "$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
 fi
+env_set OMNIVOICE_SERVER_MODE 1
 env_set OMNIVOICE_BIND_HOST 127.0.0.1
 env_set OMNIVOICE_PORT "$API_PORT"
 env_set OMNIVOICE_UI_PORT "$PUBLIC_UI_PORT"
@@ -235,6 +236,7 @@ fi
 
 chown_tree "$PREFIX" "$DATA"
 write_marker "$PREFIX"
+install_service_control "$PREFIX"
 install_units "$PREFIX" "$WEB_MODE"
 start_services "$NO_SYSTEMD" "$API_PORT"
 maybe_firewall "$FIREWALL" "$WEB_PORT" "$DOMAIN"
