@@ -65,8 +65,32 @@ clone_or_update_repo() {
   git -C "$prefix" remote set-url origin "$repo"
 }
 
+# uv puts its managed Python under $HOME by default. The installer runs as
+# root, so that would be /root/.local/share/uv, which the service user cannot
+# read. Keep the interpreter inside the app tree instead.
+uv_python_dir() {
+  printf '%s/.uv-python' "$1"
+}
+
+# A .venv whose interpreter lives outside the app tree (left by an older
+# installer) cannot be run by the service user. Drop it so it is rebuilt.
+drop_unreadable_venv() {
+  local prefix=$1 target
+  [ -L "$prefix/.venv/bin/python" ] || return 0
+  target=$(readlink -f "$prefix/.venv/bin/python" || true)
+  case "$target" in
+    "$prefix"/*) return 0 ;;
+  esac
+  log "Rebuilding .venv: its Python ($target) is outside $prefix"
+  rm -rf "$prefix/.venv"
+}
+
 install_app_deps() {
   local prefix=$1 variant=$2
+  export UV_PYTHON_INSTALL_DIR
+  UV_PYTHON_INSTALL_DIR=$(uv_python_dir "$prefix")
+  mkdir -p "$UV_PYTHON_INSTALL_DIR"
+  drop_unreadable_venv "$prefix"
   log "JavaScript dependencies (bun install)"
   (cd "$prefix" && bun install)
   log "Python environment (OMNIVOICE_TORCH_VARIANT=$variant)"
