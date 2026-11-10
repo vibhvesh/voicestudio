@@ -65,10 +65,10 @@ From a clone or the source tarball:
 
 ```bash
 # macOS / Linux — prints what it WOULD delete, with sizes, and stops:
-scripts/uninstall.sh
+scripts/desktop/uninstall.sh
 
 # actually delete, after you've read the dry-run:
-scripts/uninstall.sh --yes
+scripts/desktop/uninstall.sh --yes
 ```
 
 ```powershell

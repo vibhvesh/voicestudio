@@ -1411,9 +1411,9 @@ reclaim disk space or fully remove it, run the uninstaller, which lists every
 VoiceStudio folder with its size (dry-run first) and deletes on `--yes`:
 
 ```bash
-scripts/uninstall.sh            # macOS/Linux — dry-run
-scripts/uninstall.sh --yes      # delete app data/env/config/logs
-scripts/uninstall.sh --yes --models   # also delete the shared HF model cache
+scripts/desktop/uninstall.sh            # macOS/Linux — dry-run
+scripts/desktop/uninstall.sh --yes      # delete app data/env/config/logs
+scripts/desktop/uninstall.sh --yes --models   # also delete the shared HF model cache
 ```
 
 ```powershell

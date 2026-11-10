@@ -1,255 +1,241 @@
-#!/bin/sh
-# Install Electron from a release, or build and install current main.
-set -eu
+#!/usr/bin/env bash
+# VoiceStudio headless installer for Ubuntu/Debian (x86_64).
+#
+#   sudo bash scripts/install.sh
+#   sudo bash scripts/install.sh --port 8787
+#   sudo bash scripts/install.sh --domain voices.example.com --email you@example.com
+#
+# Piped (only works when this repository is publicly readable):
+#   curl -fsSL https://cursor.com/codebase/vibhvesh-chandel/tmp-975794ea12dd953e/raw/main/scripts/install.sh | sudo bash
+#
+# A private repository returns a login page to curl, so the pipe never sees
+# this script. Clone with git credentials, then run the file. See DEPLOY.md.
+set -euo pipefail
 
-die() { printf 'VoiceStudio: %s\n' "$*" >&2; exit 1; }
-have() { command -v "$1" >/dev/null 2>&1; }
 usage() {
-    cat <<'HELP'
-VoiceStudio Electron installer (macOS / Linux)
+  cat <<'EOF'
+Usage: sudo bash scripts/install.sh [options]
 
-  curl -fsSL https://voicestudio.sh/install | sh
-  curl -fsSL https://voicestudio.sh/install | sh -s -- --version X.Y.Z
-  curl -fsSL https://voicestudio.sh/install | sh -s -- --main
-
-  --version VERSION  Install a published Electron version (optional v prefix)
-  --main, --source   Clone main, build Electron, and install the desktop app
-  --binary          Install a release (default)
-  --uninstall       Remove the installed app, preserving all user data
-  --help            Show this help
-
-Release installs require curl and a SHA-256 tool. Main builds also require
-Git, Node.js 22+, Bun, Rust/Cargo, and native build dependencies (see README).
-The installer preserves settings, models, and projects. Quit VoiceStudio first.
-Versions without Electron artifacts are not supported; Tauri is archived.
-HELP
+  --prefix PATH     App checkout (default /opt/voicestudio)
+  --data-dir PATH   Models, database, cache (default /var/lib/voicestudio)
+  --port PORT       Public web port (default 8787). Not used with --domain.
+  --api-port PORT   Loopback API port (default 3900). Keep it off the firewall.
+  --bind ADDR       Public listen address (default 0.0.0.0)
+  --source PATH     Copy this checkout instead of git clone
+  --repo URL        Git URL used when --source is omitted
+  --ref NAME        Git branch (default main)
+  --git-token TOK   https token for a private clone (or set VOICESTUDIO_GIT_TOKEN)
+  --torch auto|cpu|cuda
+                    auto (default) uses CUDA when nvidia-smi works, else CPU
+  --domain NAME     Public hostname. Turns on the TLS reverse proxy.
+  --tls caddy|nginx TLS frontend used with --domain (default caddy)
+  --email ADDR      Let's Encrypt contact. Required for nginx certificates.
+  --firewall        Allow the public port in ufw and enable ufw
+  --no-systemd      Start background processes instead of systemd units
+  --dry-run         Print the plan and exit
+  -h, --help
+EOF
 }
 
-MODE=binary
-VS_VERSION=
-UNINSTALL=0
-INSTALL_OPTION=0
-while [ "$#" -gt 0 ]; do
-    case "$1" in
-        --main|--source) MODE=main; INSTALL_OPTION=1 ;;
-        --binary) MODE=binary; INSTALL_OPTION=1 ;;
-        --uninstall) UNINSTALL=1 ;;
-        --version)
-            [ "$#" -ge 2 ] || die '--version requires a value'
-            VS_VERSION=${2#v}; INSTALL_OPTION=1; shift ;;
-        --help|-h) usage; exit 0 ;;
-        *) die "Unknown option: $1 (see --help)" ;;
+# curl | bash has no file on disk. Clone the repo, then run the real script.
+if [ ! -f "${BASH_SOURCE[0]:-}" ]; then
+  if [ "$(id -u)" -ne 0 ]; then
+    printf 'voicestudio: pipe this into sudo bash\n' >&2
+    exit 1
+  fi
+  export DEBIAN_FRONTEND=noninteractive
+  if ! dpkg -s git >/dev/null 2>&1 || ! dpkg -s ca-certificates >/dev/null 2>&1 || ! dpkg -s curl >/dev/null 2>&1; then
+    apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update -qq
+    apt-get install -y -qq git ca-certificates curl
+  fi
+  prefix=/opt/voicestudio
+  repo="${VOICESTUDIO_REPO:-https://origin.cursor.com/git/vibhvesh-chandel/tmp-975794ea12dd953e.git}"
+  ref="${VOICESTUDIO_REF:-main}"
+  prev=
+  for arg in "$@"; do
+    case "$prev" in
+      --prefix) prefix=$arg ;;
+      --repo) repo=$arg ;;
+      --ref) ref=$arg ;;
     esac
-    shift
+    prev=$arg
+  done
+  if [ -f "$prefix/scripts/install.sh" ]; then
+    exec bash "$prefix/scripts/install.sh" "$@"
+  fi
+  if ! git clone --branch "$ref" "$repo" "$prefix"; then
+    cat >&2 <<EOF
+voicestudio: git clone failed for ${repo}.
+This repository is private. curl cannot download the installer (the raw URL
+redirects to a login page), and git clone needs a credential.
+
+Simplest fix: make the repository public. Then the curl | sudo bash command
+in DEPLOY.md works, and clone does not need a token.
+
+Until then:
+  git clone https://x-access-token:\$TOKEN@origin.cursor.com/git/vibhvesh-chandel/tmp-975794ea12dd953e.git
+  cd <checkout>
+  sudo bash scripts/install.sh
+EOF
+    exit 1
+  fi
+  exec bash "$prefix/scripts/install.sh" "$@"
+fi
+
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=deploy/lib/common.sh
+. "$SCRIPT_DIR/deploy/lib/common.sh"
+# shellcheck source=deploy/lib/prereqs.sh
+. "$SCRIPT_DIR/deploy/lib/prereqs.sh"
+# shellcheck source=deploy/lib/app.sh
+. "$SCRIPT_DIR/deploy/lib/app.sh"
+# shellcheck source=deploy/lib/tls.sh
+. "$SCRIPT_DIR/deploy/lib/tls.sh"
+# shellcheck source=deploy/lib/services.sh
+. "$SCRIPT_DIR/deploy/lib/services.sh"
+
+PREFIX=$VOICESTUDIO_DEFAULT_PREFIX
+DATA=$VOICESTUDIO_DEFAULT_DATA
+WEB_PORT=$VOICESTUDIO_DEFAULT_WEB_PORT
+API_PORT=$VOICESTUDIO_DEFAULT_API_PORT
+WEB_HOST=0.0.0.0
+SOURCE=
+REPO=${VOICESTUDIO_REPO:-$VOICESTUDIO_DEFAULT_REPO}
+REF=${VOICESTUDIO_REF:-$VOICESTUDIO_DEFAULT_REF}
+GIT_TOKEN=${VOICESTUDIO_GIT_TOKEN:-}
+TORCH=auto
+DOMAIN=
+TLS=caddy
+EMAIL=
+FIREWALL=0
+NO_SYSTEMD=0
+DRY_RUN=0
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --prefix) PREFIX=$2; shift 2 ;;
+    --data-dir) DATA=$2; shift 2 ;;
+    --port) WEB_PORT=$2; shift 2 ;;
+    --api-port) API_PORT=$2; shift 2 ;;
+    --bind) WEB_HOST=$2; shift 2 ;;
+    --source) SOURCE=$2; shift 2 ;;
+    --repo) REPO=$2; shift 2 ;;
+    --ref) REF=$2; shift 2 ;;
+    --git-token) GIT_TOKEN=$2; shift 2 ;;
+    --torch) TORCH=$2; shift 2 ;;
+    --domain) DOMAIN=$2; shift 2 ;;
+    --tls) TLS=$2; shift 2 ;;
+    --email) EMAIL=$2; shift 2 ;;
+    --firewall) FIREWALL=1; shift ;;
+    --no-systemd) NO_SYSTEMD=1; shift ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) die "Unknown option: $1 (see --help)" ;;
+  esac
 done
-[ "$UNINSTALL-$INSTALL_OPTION" != 1-1 ] || die '--uninstall cannot be combined with installation options'
-[ "$MODE" != main ] || [ -z "$VS_VERSION" ] || die '--main cannot be combined with --version'
-valid_version() {
-    # Versions are used in URLs and filenames; reject paths and shell syntax.
-    printf '%s\n' "$1" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+([.-][A-Za-z0-9]+)*)?$'
-}
-[ -z "$VS_VERSION" ] || valid_version "$VS_VERSION" || die 'Invalid version; use X.Y.Z or X.Y.Z-prerelease'
-case "$(uname -s)" in
-    Darwin) OS=mac ;;
-    Linux) OS=linux ;;
-    *) die 'This shell installer supports macOS and Linux. On Windows, use the Electron .exe from GitHub Releases.' ;;
+
+valid_port "$WEB_PORT" || die "Invalid --port"
+valid_port "$API_PORT" || die "Invalid --api-port"
+[ "$WEB_PORT" != "$API_PORT" ] || die "--port and --api-port must differ"
+safe_abs_dir "$PREFIX"
+safe_abs_dir "$DATA"
+case "$TORCH" in
+  auto|cpu|cuda) ;;
+  *) die "--torch must be auto, cpu, or cuda" ;;
 esac
-if [ "$OS" = mac ]; then
-    PATH="$PATH:/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support"
-    export PATH
-fi
-if [ -n "${VOICESTUDIO_INSTALL_DIR:-}" ]; then
-    case "$VOICESTUDIO_INSTALL_DIR" in /*) ;; *) die 'Install directory must be absolute';; esac
-    [ -d "$VOICESTUDIO_INSTALL_DIR" ] && [ -w "$VOICESTUDIO_INSTALL_DIR" ] || die 'Custom install directory must exist and be writable.'
-fi
-require_closed() {
-    if have pgrep && { pgrep -f '/VoiceStudio[.]app/Contents/MacOS/VoiceStudio([[:space:]]|$)' >/dev/null 2>&1 || pgrep -x VoiceStudio >/dev/null 2>&1 || pgrep -f '(^|/)voicestudio-electron([[:space:]]|$)' >/dev/null 2>&1; }; then
-        die 'Quit VoiceStudio completely (macOS: Command-Q), then run this command again. No app files were changed.'
-    fi
-}
-require_closed
-if [ "$UNINSTALL" = 1 ]; then
-    # Move only the named application into a recoverable sibling directory.
-    # Never traverse data locations or delete shared model caches.
-    remove_app() {
-        target=$1
-        [ -e "$target" ] || [ -L "$target" ] || return 0
-        [ ! -L "$target" ] || die "Refusing symlink: $target"
-        if [ "$OS" = mac ]; then
-            [ -f "$target/Contents/Resources/app.asar" ] || die "Not an Electron app: $target"
-        else
-            [ -f "$target" ] || die "Not an AppImage file: $target"
-        fi
-        if [ "$OS" = mac ]; then
-            # Hidden .app backups inside Applications still appear in Launchpad.
-            # Trash keeps recovery possible without leaving a launchable duplicate.
-            mkdir -p "$HOME/.Trash"
-            recovery=$(mktemp -d "$HOME/.Trash/VoiceStudio-uninstalled.XXXXXXXX")
-            # lsregister may return -10814 even after removing a stale record.
-            # Moving to Trash is still required to prevent rediscovery.
-            lsregister -u "$target" || printf 'Warning: macOS could not refresh the old registration; moving the app to Trash.\n' >&2
-        else
-            recovery=$(mktemp -d "$(dirname "$target")/.voicestudio-uninstalled.XXXXXXXX")
-        fi
-        mv "$target" "$recovery/" || die "Could not remove $target; check permissions."
-        printf 'Uninstalled: %s\nRecoverable copy: %s\n' "$target" "$recovery"
-    }
-    printf 'Quit VoiceStudio before uninstalling.\n'
-    if [ -n "${VOICESTUDIO_INSTALL_DIR:-}" ]; then
-        case "$VOICESTUDIO_INSTALL_DIR" in /*) ;; *) die 'Install directory must be absolute';; esac
-        if [ "$OS" = mac ]; then remove_app "$VOICESTUDIO_INSTALL_DIR/VoiceStudio.app";
-        else remove_app "$VOICESTUDIO_INSTALL_DIR/VoiceStudio"; fi
-    elif [ "$OS" = mac ]; then
-        remove_app /Applications/VoiceStudio.app
-        remove_app "$HOME/Applications/VoiceStudio.app"
-    else
-        remove_app "$HOME/.local/bin/VoiceStudio"
-    fi
-    printf 'Uninstall complete. Settings, models and projects are preserved.\n'
-    exit 0
-fi
-have curl || die 'Install curl, then retry.'
-case "$(uname -m)" in
-    arm64|aarch64) ARCH=arm64 ;;
-    x86_64|amd64) ARCH=x64 ;;
-    *) die 'Unsupported processor architecture.' ;;
+case "$TLS" in
+  caddy|nginx) ;;
+  *) die "--tls must be caddy or nginx" ;;
 esac
-if [ "$OS" = mac ] && [ "$ARCH" = x64 ] && [ "$(sysctl -in hw.optional.arm64 2>/dev/null || true)" = 1 ]; then
-    ARCH=arm64
-    [ "$MODE" != main ] || die 'Run --main from a native Apple Silicon terminal, not Rosetta.'
+if [ -n "$DOMAIN" ] && [ "$TLS" = nginx ] && [ -z "$EMAIL" ]; then
+  log "--email is unset. nginx will serve HTTP until you pass --email and re-run."
 fi
-[ "$OS-$ARCH" != linux-arm64 ] || die 'Linux arm64 Electron packages are not supported yet.'
+if [ -z "$DOMAIN" ] && [ "$WEB_PORT" -lt 1024 ]; then
+  die "Port ${WEB_PORT} needs root. Use a port above 1024, or --domain so Caddy/nginx binds 443."
+fi
 
-WORK=$(mktemp -d "${TMPDIR:-/tmp}/voicestudio-install.XXXXXXXX")
-MOUNT=
-STAGED=
-BACKUP=
-DEST=
-cleanup() {
-    if [ -n "$MOUNT" ]; then hdiutil detach "$MOUNT" -quiet >/dev/null 2>&1 || true; fi
-    if [ -n "$BACKUP" ] && [ -e "$BACKUP" ] && [ ! -e "$DEST" ]; then mv "$BACKUP" "$DEST"; fi
-    if [ -n "$STAGED" ] && [ -d "$STAGED" ]; then rm -rf "$STAGED"; fi
-    rm -rf "$WORK"
-}
-trap cleanup EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM HUP
-download() { curl --proto '=https' --proto-redir '=https' --connect-timeout 30 --max-time 1800 -fLsS --retry 3 "$1" -o "$2"; }
+if [ "$TORCH" = auto ]; then
+  TORCH=$(detect_torch_variant)
+fi
+WEB_MODE=proxy
+PUBLIC_UI_PORT=$WEB_PORT
+if [ -n "$DOMAIN" ]; then
+  WEB_MODE=$TLS
+  PUBLIC_UI_PORT=443
+fi
 
-install_app() {
-    require_closed
-    if [ "$OS" = mac ]; then
-        DEST_DIR=${VOICESTUDIO_INSTALL_DIR:-/Applications}
-        if [ ! -w "$DEST_DIR" ]; then DEST_DIR="$HOME/Applications"; mkdir -p "$DEST_DIR"; fi
-        DEST="$DEST_DIR/VoiceStudio.app"
-        STAGED=$(mktemp -d "$DEST_DIR/.voicestudio-install.XXXXXXXX")
-        # Copy and validate first, retaining the prior app until the copy succeeds.
-        ditto "$1" "$STAGED/VoiceStudio.app"
-        [ -f "$STAGED/VoiceStudio.app/Contents/Info.plist" ] || die 'Invalid application bundle.'
-        if [ -e "$DEST" ]; then
-            BACKUP="$STAGED/previous.app"
-            mv "$DEST" "$BACKUP"
-        fi
-        mv "$STAGED/VoiceStudio.app" "$DEST"
-        # Releases without a Developer ID are only ad-hoc signed, and some were
-        # shipped with a bundle signature that no longer matches (#2763, #2829,
-        # #2681), which macOS reports as "damaged". Clear any quarantine flag and
-        # repair an invalid signature in place; a valid or notarized app is left
-        # untouched. Both steps are best effort and never abort the install.
-        xattr -dr com.apple.quarantine "$DEST" >/dev/null 2>&1 || true
-        if have codesign && ! codesign --verify --deep --strict "$DEST" >/dev/null 2>&1; then
-            codesign --force --deep --sign - "$DEST" >/dev/null 2>&1 \
-                && printf 'Repaired the app signature locally (ad-hoc) so macOS opens it.\n' \
-                || printf 'Warning: could not repair the app signature; see docs/install/macos.md#gatekeeper-quarantine.\n' >&2
-        fi
-        lsregister -f "$DEST" || printf 'Warning: macOS registration failed; open the installed app directly.\n' >&2
-    else
-        DEST_DIR=${VOICESTUDIO_INSTALL_DIR:-"$HOME/.local/bin"}
-        mkdir -p "$DEST_DIR"
-        DEST="$DEST_DIR/VoiceStudio"
-        STAGED=$(mktemp -d "$DEST_DIR/.voicestudio-install.XXXXXXXX")
-        cp "$1" "$STAGED/VoiceStudio"
-        chmod +x "$STAGED/VoiceStudio"
-        mv -f "$STAGED/VoiceStudio" "$DEST"
-    fi
-    printf 'Installed Electron: %s\n' "$DEST"
-    printf 'Open VoiceStudio to configure its local backend and choose models. Existing data is preserved.\n'
-    if [ "$OS" = mac ]; then printf 'Launch the installed app: open "%s"\n' "$DEST"; fi
-    if [ "$OS" = mac ] && [ "$ARCH" = x64 ]; then
-        printf 'Note: this is an Intel Mac. The app UI runs, but the local backend needs Apple Silicon; connect to a backend on another machine (docs/install/macos.md).\n'
-    fi
-}
+if [ "$DRY_RUN" = 1 ]; then
+  cat <<EOF
+prefix:     $PREFIX
+data:       $DATA
+torch:      $TORCH
+api:        127.0.0.1:$API_PORT
+web:        ${DOMAIN:-$WEB_HOST:$WEB_PORT} (${WEB_MODE})
+source:     ${SOURCE:-git $REPO $REF}
+systemd:    $([ "$NO_SYSTEMD" = 1 ] && printf 'no' || printf 'yes')
+EOF
+  exit 0
+fi
 
-if [ "$MODE" = main ]; then
-    for tool in git node bun cargo; do have "$tool" || die "Main builds require $tool; see the source-build prerequisites in README."; done
-    if [ "$OS" = linux ]; then
-        for tool in readelf zsyncmake; do have "$tool" || die "Linux main builds require $tool; install binutils and zsync (see docs/install/script.md)."; done
-    fi
-    node -e 'if (Number(process.versions.node.split(".")[0]) < 22) process.exit(1)' || die 'Node.js 22 or newer is required.'
-    printf 'Building and installing Electron from main (this may take several minutes).\n'
-    # Never pull into, reset, or build from an existing user checkout.
-    git clone --depth 1 --branch main --single-branch https://github.com/debpalash/VoiceStudio.git "$WORK/source"
-    (
-        cd "$WORK/source"
-        printf 'Source commit: '; git rev-parse HEAD
-        bun install --frozen-lockfile
-        # Packaging includes the backend and builds its Rust native helper.
-        # Backend setup is performed by the installed app on first launch.
-        export CSC_IDENTITY_AUTO_DISCOVERY=false
-        cd electron
-        bun run build
-        bun run build:web
-        node tests/packaging-contract.mjs
-        # Invoke the builder directly: bun appends flags to the last command
-        # in a chained package script, not necessarily to electron-builder.
-        bun run electron-builder --config electron-builder.config.mjs --publish never --"$OS" --"$ARCH"
-        if [ "$OS" = linux ]; then node scripts/embed-appimage-update.mjs; fi
-        node tests/update-package-contract.mjs
-    )
-    VS_VERSION=$(node -p 'require(process.argv[1]).version' "$WORK/source/package.json")
-    valid_version "$VS_VERSION" || die 'Invalid version in source checkout.'
-    PACKAGE_DIR="$WORK/source/electron/release"
+if [ "$(id -u)" -ne 0 ]; then
+  exec sudo -E bash "$SCRIPT_DIR/install.sh" "$@"
+fi
+require_root
+prereq_all
+ensure_service_user "$DATA"
+
+if [ -n "$SOURCE" ]; then
+  SOURCE=$(cd "$SOURCE" && pwd)
+  sync_source_tree "$SOURCE" "$PREFIX"
 else
-    RELEASES=https://github.com/debpalash/VoiceStudio/releases
-    if [ -z "$VS_VERSION" ]; then
-        # latest.json is the frozen Tauri feed. Resolve the release tag instead.
-        URL=$(curl --proto '=https' --proto-redir '=https' --connect-timeout 30 --max-time 60 -fLsS --retry 3 -o /dev/null -w '%{url_effective}' "$RELEASES/latest")
-        case "$URL" in "$RELEASES/tag/v"*) VS_VERSION=${URL##*/v} ;; *) die 'Could not resolve the latest release tag.' ;; esac
-        valid_version "$VS_VERSION" || die 'Invalid latest release version.'
-    fi
-    PACKAGE_DIR="$WORK"
+  clone_or_update_repo "$REPO" "$REF" "$PREFIX" "$GIT_TOKEN"
 fi
-# Releases up to v0.5.7-beta.3 named their packages VoiceStudio-Electron-*;
-# keep pinned installs of those versions working.
-case "$VS_VERSION" in
-    0.[0-4].*|0.5.[0-6]|0.5.[0-6]-*|0.5.7-beta.[1-3]) ASSET_PREFIX=VoiceStudio-Electron ;;
-    *) ASSET_PREFIX=VoiceStudio ;;
-esac
-case "$OS" in
-    mac) ASSET="$ASSET_PREFIX-$VS_VERSION-mac-$ARCH.dmg" ;;
-    linux) ASSET="$ASSET_PREFIX-$VS_VERSION-linux-x64.AppImage" ;;
-esac
-PACKAGE="$PACKAGE_DIR/$ASSET"
-if [ "$MODE" = binary ]; then
-    BASE="$RELEASES/download/v$VS_VERSION"
-    printf 'Downloading %s\n' "$ASSET"
-    download "$BASE/$ASSET" "$PACKAGE" || die "No downloadable Electron package for v$VS_VERSION ($OS/$ARCH). Check the release; legacy Tauri versions are not installed."
-    download "$BASE/SHA256SUMS.txt" "$WORK/SHA256SUMS.txt" || die 'Published checksums are unavailable; refusing to install.'
-    EXPECTED=$(awk -v asset="$ASSET" '$2 == asset {print $1}' "$WORK/SHA256SUMS.txt")
-    printf '%s\n' "$EXPECTED" | grep -Eq '^[a-fA-F0-9]{64}$' || die 'Missing, duplicate, or invalid checksum entry.'
-    if have shasum; then ACTUAL=$(shasum -a 256 "$PACKAGE" | awk '{print $1}');
-    elif have sha256sum; then ACTUAL=$(sha256sum "$PACKAGE" | awk '{print $1}');
-    else die 'A SHA-256 tool (shasum or sha256sum) is required; refusing to install.'; fi
-    [ "$(printf '%s' "$EXPECTED" | tr 'A-F' 'a-f')" = "$ACTUAL" ] || die 'Checksum mismatch; refusing to install.'
-    printf 'Checksum verified.\n'
+
+install_app_deps "$PREFIX" "$TORCH"
+python3 "$PREFIX/scripts/deploy/web_proxy.py" --self-test
+
+# Group must exist before the env file is locked down.
+key_new=0
+if [ -z "$(env_get OMNIVOICE_API_KEY)" ]; then
+  key_new=1
+  env_set OMNIVOICE_API_KEY "$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
 fi
-[ -f "$PACKAGE" ] || die "Expected Electron package not found: $PACKAGE"
-if [ "$OS" = mac ]; then
-    MOUNT="$WORK/mount"
-    mkdir "$MOUNT"
-    hdiutil attach -readonly -nobrowse -mountpoint "$MOUNT" "$PACKAGE" >/dev/null || die "Could not open the disk image $ASSET (checksum was verified). Free some disk space and retry."
-    [ -d "$MOUNT/VoiceStudio.app" ] || die 'VoiceStudio.app is missing from the disk image.'
-    install_app "$MOUNT/VoiceStudio.app"
+env_set OMNIVOICE_BIND_HOST 127.0.0.1
+env_set OMNIVOICE_PORT "$API_PORT"
+env_set OMNIVOICE_UI_PORT "$PUBLIC_UI_PORT"
+env_set OMNIVOICE_DATA_DIR "$DATA"
+env_set HF_HOME "$DATA/huggingface"
+env_set HF_HUB_CACHE "$DATA/huggingface/hub"
+env_set OMNIVOICE_TORCH_VARIANT "$TORCH"
+env_set OMNIVOICE_FRONTEND_DIST "$PREFIX/frontend/dist"
+env_set VOICESTUDIO_PREFIX "$PREFIX"
+env_set VOICESTUDIO_WEB_HOST "$WEB_HOST"
+env_set VOICESTUDIO_WEB_PORT "$WEB_PORT"
+env_set VOICESTUDIO_API_HOST 127.0.0.1
+env_set VOICESTUDIO_API_PORT "$API_PORT"
+env_set VOICESTUDIO_WEB_MODE "$WEB_MODE"
+env_set VOICESTUDIO_DOMAIN "$DOMAIN"
+env_set VOICESTUDIO_TLS "$TLS"
+env_set VOICESTUDIO_REPO "$REPO"
+env_set VOICESTUDIO_REF "$REF"
+env_set HOME "$DATA"
+env_set XDG_CACHE_HOME "$DATA/cache"
+if [ -n "$DOMAIN" ]; then
+  env_set OMNIVOICE_ALLOWED_HOSTS "$DOMAIN"
+  env_set OMNIVOICE_ALLOWED_ORIGINS "https://${DOMAIN},http://127.0.0.1:${WEB_PORT},http://localhost:${WEB_PORT},app://voicestudio"
 else
-    install_app "$PACKAGE"
+  # Same-origin UI. IP hosts are allowed without this list; keep loopback for local curls.
+  env_set OMNIVOICE_ALLOWED_HOSTS ""
+  env_set OMNIVOICE_ALLOWED_ORIGINS "http://127.0.0.1:${WEB_PORT},http://localhost:${WEB_PORT},app://voicestudio"
 fi
+
+if [ -n "$DOMAIN" ]; then
+  write_tls_config "$DOMAIN" "$TLS" "$API_PORT" "$EMAIL"
+fi
+
+chown_tree "$PREFIX" "$DATA"
+write_marker "$PREFIX"
+install_units "$PREFIX" "$WEB_MODE"
+start_services "$NO_SYSTEMD" "$API_PORT"
+maybe_firewall "$FIREWALL" "$WEB_PORT" "$DOMAIN"
+print_summary "$(public_url "$DOMAIN" "$WEB_PORT")" "$key_new" "$WEB_PORT" "$API_PORT" "$DOMAIN"

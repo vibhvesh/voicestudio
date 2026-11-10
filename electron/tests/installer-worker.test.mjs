@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const root = new URL('../../', import.meta.url);
-const shell = await readFile(new URL('scripts/install.sh', root), 'utf8');
+const shell = await readFile(new URL('scripts/desktop/install.sh', root), 'utf8');
 const powershell = await readFile(new URL('scripts/install.ps1', root), 'utf8');
 const source = (await readFile(new URL('deploy/install-worker/worker.mjs', root), 'utf8'))
-  .replace("import shell from '../../scripts/install.sh';", () => `const shell = ${JSON.stringify(shell)};`)
+  .replace("import shell from '../../scripts/desktop/install.sh';", () => `const shell = ${JSON.stringify(shell)};`)
   .replace("import powershell from '../../scripts/install.ps1';", () => `const powershell = ${JSON.stringify(powershell)};`);
 const { default: worker } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 

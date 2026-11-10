@@ -34,13 +34,13 @@ curl -fsSL https://voicestudio.sh/install | sh -s -- --main
 Release packages are named `VoiceStudio-<version>-<os>-<arch>`; the installers
 still find the `VoiceStudio-Electron-*` names that releases up to v0.5.7-beta.3 used.
 After downloading the script for inspection, the equivalent local commands are
-`sh scripts/install.sh`, `sh scripts/install.sh --version X.Y.Z`, and
-`sh scripts/install.sh --main`.
+`sh scripts/desktop/install.sh`, `sh scripts/desktop/install.sh --version X.Y.Z`, and
+`sh scripts/desktop/install.sh --main`.
 
 ## Release installation
 
 If `voicestudio.sh/install` is unreachable or returns 404, run the same script
-straight from the repository, or clone it and run `scripts/install.sh`:
+straight from the repository, or clone it and run `scripts/desktop/install.sh`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/debpalash/VoiceStudio/main/scripts/install.sh | sh

@@ -1,4 +1,4 @@
-import shell from '../../scripts/install.sh';
+import shell from '../../scripts/desktop/install.sh';
 import powershell from '../../scripts/install.ps1';
 
 const html = `<!doctype html>

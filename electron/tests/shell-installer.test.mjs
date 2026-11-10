@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
-const installer = process.env.INSTALLER_UNDER_TEST || resolve('../scripts/install.sh');
+const installer = process.env.INSTALLER_UNDER_TEST || resolve('../scripts/desktop/install.sh');
 const installerSource = readFileSync(installer, 'utf8');
 const payload = 'fixture Electron AppImage';
 const digest = createHash('sha256').update(payload).digest('hex');

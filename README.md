@@ -50,6 +50,8 @@ This tree is a source copy of [VoiceStudio](https://github.com/debpalash/VoiceSt
 
 The commands below were verified on Linux x86_64 with no NVIDIA GPU: Bun 1.4.2, uv, CPU PyTorch 2.8.0, and Python 3.11 installed by uv. The web UI and the FastAPI backend both start. Speech synthesis itself waits on a model download (below).
 
+A headless Ubuntu/Debian VPS install (systemd, API key, optional HTTPS) is in [DEPLOY.md](DEPLOY.md). The Electron desktop one-liner remains `scripts/desktop/install.sh`.
+
 ### Prerequisites
 
 - **Bun 1.4.2** — `curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.2"`
