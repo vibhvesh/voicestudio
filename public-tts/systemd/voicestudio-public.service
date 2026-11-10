@@ -1,0 +1,23 @@
+[Unit]
+Description=VoiceStudio Speak public text-to-speech page
+After=voicestudio-api.service
+Requires=voicestudio-api.service
+
+[Service]
+Type=simple
+User=voicestudio
+Group=voicestudio
+NoNewPrivileges=true
+WorkingDirectory=/opt/voicestudio/public-tts
+EnvironmentFile=/etc/voicestudio/voicestudio.env
+Environment=VOICESTUDIO_PUBLIC_HOST=0.0.0.0
+Environment=VOICESTUDIO_PUBLIC_PORT=8788
+Environment=VOICESTUDIO_API_URL=http://127.0.0.1:3900
+Environment=VOICESTUDIO_PUBLIC_CORS_ORIGINS=https://bowlinger.net,https://www.bowlinger.net,http://bowlinger.net,http://www.bowlinger.net,http://130.250.191.136:8788
+ExecStart=/usr/bin/python3 /opt/voicestudio/public-tts/backend/app.py
+Restart=on-failure
+RestartSec=2
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

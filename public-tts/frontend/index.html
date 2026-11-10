@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Type text, pick a language and speaking rate, and generate speech with VoiceStudio.">
+  <title>VoiceStudio – Text to Speech</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f3d38'/%3E%3Cpath d='M18 34c0-8 6-14 14-14s14 6 14 14' fill='none' stroke='%23e8c872' stroke-width='4' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='34' r='5' fill='%23e8c872'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <p class="eyebrow">VoiceStudio Speak</p>
+      <h1>VoiceStudio – Text to Speech</h1>
+      <p class="lede">Write your text, choose a language and a speaking rate, then generate a clip you can play or download.</p>
+    </header>
+
+    <main class="card">
+      <form id="speak-form" novalidate>
+        <div class="field">
+          <div class="field-head">
+            <label for="text">Text</label>
+            <div class="field-actions">
+              <label class="linkish">
+                <input type="file" id="text-file" accept=".txt,text/plain" hidden>
+                Upload a .txt file
+              </label>
+              <span id="char-count" class="count">0 / 500</span>
+            </div>
+          </div>
+          <textarea id="text" name="text" rows="7" maxlength="500" required placeholder="Type or paste the words you want spoken…"></textarea>
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <label for="language-filter">Language</label>
+            <input type="search" id="language-filter" placeholder="Search languages" autocomplete="off" aria-label="Search languages">
+            <select id="language" name="language" size="8" required></select>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <label for="wpm">Words per minute</label>
+              <input type="number" id="wpm-number" min="80" max="220" step="1" value="150" aria-label="Words per minute number">
+            </div>
+            <input type="range" id="wpm" name="wpm" min="80" max="220" step="1" value="150">
+            <p class="hint" id="duration-hint">At 150 words per minute this will be about 0 seconds of audio.</p>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <label for="voice">Voice</label>
+            <select id="voice" name="voice"></select>
+            <p class="hint">This changes the speaker (gender, age, or whisper). The model does not have a separate sad or laugh control — write emotion into the text, for example “she said softly” or “he laughed.”</p>
+          </div>
+
+          <div class="field">
+            <label for="reference">Reference voice <span class="optional">(optional)</span></label>
+            <input type="file" id="reference" name="reference" accept="audio/wav,audio/mpeg,audio/ogg,audio/flac,audio/mp4,audio/webm,.wav,.mp3,.ogg,.flac,.m4a,.webm">
+            <p class="hint" id="reference-hint">Upload a short clip to clone that voice. Leave empty to use the voice above.</p>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" id="generate" class="primary">Generate speech</button>
+          <p class="timing-note">On this CPU server, generation takes about 11 times the audio length. A 20 second clip often takes around 4 minutes.</p>
+        </div>
+      </form>
+
+      <section class="status" id="status" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <div>
+          <p id="status-title">Generating…</p>
+          <p class="hint" id="status-detail"></p>
+        </div>
+      </section>
+
+      <section class="result" id="result" hidden>
+        <h2>Your clip</h2>
+        <audio id="player" controls preload="metadata"></audio>
+        <div class="result-meta" id="result-meta"></div>
+        <a id="download" class="button" download="voicestudio.wav">Download</a>
+      </section>
+
+      <p class="error" id="error" hidden></p>
+    </main>
+
+    <footer>
+      <p>Powered by VoiceStudio (OmniVoice). The API key stays on the server and is never sent to your browser.</p>
+    </footer>
+  </div>
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
