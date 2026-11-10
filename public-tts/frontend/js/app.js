@@ -11,7 +11,8 @@
   const wpmEl = document.getElementById("wpm");
   const wpmNumber = document.getElementById("wpm-number");
   const durationHint = document.getElementById("duration-hint");
-  const voiceEl = document.getElementById("voice");
+  const voiceList = document.getElementById("voice-list");
+  const voicesUi = window.VoiceStudioVoices;
   const referenceEl = document.getElementById("reference");
   const referenceHint = document.getElementById("reference-hint");
   const generateBtn = document.getElementById("generate");
@@ -81,18 +82,12 @@
       ". Expected generation time on this CPU is about " + formatSeconds(wait) + ".";
   }
 
-  function fillVoices() {
-    voiceEl.innerHTML = "";
-    const voices = meta.voices.length ? meta.voices : [
-      { id: "narrator", label: "Narrator (default)", blurb: "" }
+  function fillVoices(savedVoices) {
+    const presets = meta.voices && meta.voices.length ? meta.voices : [
+      { id: "narrator", label: "Priya", blurb: "young female" }
     ];
-    for (const voice of voices) {
-      const opt = document.createElement("option");
-      opt.value = voice.id;
-      opt.textContent = voice.label + (voice.blurb ? " — " + voice.blurb : "");
-      if (voice.id === meta.default_voice) opt.selected = true;
-      voiceEl.appendChild(opt);
-    }
+    const list = voicesUi.mergeLists(savedVoices || [], presets, meta.default_voice || "narrator");
+    voicesUi.render(voiceList, list, meta.default_voice || "narrator");
   }
 
   function renderLanguages(filter) {
@@ -207,7 +202,7 @@
         text,
         language: languageEl.value,
         wpm,
-        voice: voiceEl.value,
+        voice: voicesUi.selected(voiceList),
         reference: referenceEl.files && referenceEl.files[0]
       }, {
         pollIntervalMs: meta.poll_interval_ms || 2500,
@@ -252,9 +247,16 @@
       wpmEl.min = wpmNumber.min = meta.min_wpm;
       wpmEl.max = wpmNumber.max = meta.max_wpm;
       wpmEl.value = wpmNumber.value = meta.default_wpm;
-      fillVoices();
+      let savedVoices = [];
+      try {
+        const saved = await api.getJson("/api/voices");
+        savedVoices = saved.voices || [];
+      } catch (err) {
+        savedVoices = [];
+      }
+      fillVoices(savedVoices);
     } catch (err) {
-      fillVoices();
+      fillVoices([]);
       showError("Could not load server settings. You can still try to generate.");
     }
     try {

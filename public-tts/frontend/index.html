@@ -51,9 +51,9 @@
 
         <div class="grid">
           <div class="field">
-            <label for="voice">Voice</label>
-            <select id="voice" name="voice"></select>
-            <p class="hint">This changes the speaker (gender, age, or whisper). The model does not have a separate sad or laugh control — write emotion into the text, for example “she said softly” or “he laughed.”</p>
+            <span class="field-label" id="voice-heading">Voice</span>
+            <div class="voice-list" id="voice-list" role="radiogroup" aria-labelledby="voice-heading"></div>
+            <p class="hint">Saved voices are listed first, then named styles. The model has no separate emotion control — write feeling into the text if you need it.</p>
           </div>
 
           <div class="field">
@@ -93,6 +93,7 @@
   </div>
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/voices.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

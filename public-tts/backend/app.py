@@ -16,10 +16,10 @@ from urllib.parse import urlparse
 if __name__ == "__main__" and __package__ is None:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from backend import config, cors, languages, rate_limit, wpm
-    from backend import http_util, jobs, paths, proxy, saved
+    from backend import http_util, jobs, paths, proxy, saved, voice_labels
 else:
     from . import config, cors, languages, rate_limit, wpm
-    from . import http_util, jobs, paths, proxy, saved
+    from . import http_util, jobs, paths, proxy, saved, voice_labels
 
 LOG = logging.getLogger("voicestudio-speak")
 
@@ -345,7 +345,7 @@ def public_meta() -> dict:
         "prefix": config.PUBLIC_PREFIX or None,
         "voices": [
             {k: v[k] for k in ("id", "label", "blurb")}
-            for v in config.VOICES.values()
+            for v in voice_labels.decorate_presets(config.VOICES.values())
         ],
         "reference_upload": True,
         "reference_max_bytes": config.MAX_REFERENCE_BYTES,
